@@ -17,6 +17,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Task } from "@/app/types/task";
 import { useLoader } from "@/context/LoaderContext";
+import { useTheme } from "@/context/ThemeContext";
 import { onSnapshot } from "firebase/firestore";
 
 const TaskScreen = () => {
