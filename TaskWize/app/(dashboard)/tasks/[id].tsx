@@ -16,6 +16,8 @@ import { useTheme } from "@/context/ThemeContext";
 import * as Location from "expo-location";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NotificationService } from "@/service/notificationService";
+import LocationMonitoringService from "@/service/locationMonitoringService";
+import LocationPicker from "@/components/LocationPicker";
 
 const TaskFormScreen = () => {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -31,6 +33,13 @@ const TaskFormScreen = () => {
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(false);
   const [notifyOnLocation, setNotifyOnLocation] = useState<boolean>(false);
   const [notificationRange, setNotificationRange] = useState<number>(100);
+  const [showLocationPicker, setShowLocationPicker] = useState<boolean>(false);
+  const [selectedLocationData, setSelectedLocationData] = useState<{
+    latitude: number;
+    longitude: number;
+    address?: string;
+    name?: string;
+  } | null>(null);
   const router = useRouter();
   const { hideLoader, showLoader } = useLoader();
   const { user } = useAuth();
@@ -110,6 +119,16 @@ const TaskFormScreen = () => {
           formattedAddress ||
             `${location.coords.latitude}, ${location.coords.longitude}`
         );
+
+        // Set the selected location data for display
+        setSelectedLocationData({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          address:
+            formattedAddress ||
+            `${location.coords.latitude}, ${location.coords.longitude}`,
+          name: "Current Location",
+        });
       }
     } catch (error) {
       console.error("Error getting location:", error);
@@ -117,6 +136,23 @@ const TaskFormScreen = () => {
     } finally {
       setIsLoadingLocation(false);
     }
+  };
+
+  const handleLocationSelect = (locationData: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+    name?: string;
+  }) => {
+    setSelectedLocationData(locationData);
+    setCurrentLocation({
+      latitude: locationData.latitude,
+      longitude: locationData.longitude,
+    });
+    setLocation(
+      locationData.address ||
+        `${locationData.latitude}, ${locationData.longitude}`
+    );
   };
 
   const handleSubmit = async () => {
@@ -137,7 +173,7 @@ const TaskFormScreen = () => {
             }
           : undefined;
 
-        await createTask({
+        const newTaskId = await createTask({
           title,
           description,
           userId: user?.uid,
@@ -147,8 +183,8 @@ const TaskFormScreen = () => {
           notifyOnLocation: notifyOnLocation && currentLocation !== null,
         });
 
-        // Schedule notification if enabled
-        if (notifyOnLocation && currentLocation && taskLocation) {
+        // Set up location monitoring if enabled
+        if (notifyOnLocation && currentLocation && taskLocation && newTaskId) {
           try {
             // Send immediate confirmation notification
             await NotificationService.sendImmediateTaskNotification(
@@ -161,20 +197,22 @@ const TaskFormScreen = () => {
               notificationRange
             );
 
-            // Also schedule a delayed notification for testing location monitoring
-            await NotificationService.scheduleTaskNotification(
-              title,
-              {
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                address: location || "Unknown location",
-              },
-              notificationRange,
-              0.1 // 6 seconds for immediate testing
+            // Add task to location monitoring service
+            LocationMonitoringService.addTaskLocation({
+              id: newTaskId,
+              title: title,
+              latitude: currentLocation.latitude,
+              longitude: currentLocation.longitude,
+              range: notificationRange,
+              address: location || "Unknown location",
+            });
+
+            console.log(
+              `✅ Location monitoring set up for task "${title}" within ${notificationRange}m`
             );
           } catch (notificationError) {
             console.error(
-              "Failed to schedule notification:",
+              "Failed to set up location monitoring:",
               notificationError
             );
           }
@@ -251,153 +289,196 @@ const TaskFormScreen = () => {
   ];
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ padding: 20 }}>
-        <Text
-          style={{
-            fontSize: 24,
-            fontWeight: "bold",
-            marginBottom: 16,
-            color: colors.text,
-          }}
-        >
-          {isNew ? "Add Task" : "Edit Task"}
-        </Text>
+    <>
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ padding: 20 }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: "bold",
+              marginBottom: 16,
+              color: colors.text,
+            }}
+          >
+            {isNew ? "Add Task" : "Edit Task"}
+          </Text>
 
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "500",
-            marginBottom: 8,
-            color: colors.text,
-          }}
-        >
-          Title *
-        </Text>
-        <TextInput
-          placeholder="Enter task title"
-          style={{
-            borderWidth: 1,
-            borderColor: colors.border,
-            padding: 12,
-            marginBottom: 16,
-            borderRadius: 6,
-            fontSize: 16,
-            backgroundColor: colors.surface,
-            color: colors.text,
-          }}
-          placeholderTextColor={colors.textSecondary}
-          value={title}
-          onChangeText={setTitle}
-        />
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "500",
+              marginBottom: 8,
+              color: colors.text,
+            }}
+          >
+            Title *
+          </Text>
+          <TextInput
+            placeholder="Enter task title"
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 12,
+              marginBottom: 16,
+              borderRadius: 6,
+              fontSize: 16,
+              backgroundColor: colors.surface,
+              color: colors.text,
+            }}
+            placeholderTextColor={colors.textSecondary}
+            value={title}
+            onChangeText={setTitle}
+          />
 
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "500",
-            marginBottom: 8,
-            color: colors.text,
-          }}
-        >
-          Description
-        </Text>
-        <TextInput
-          placeholder="Enter task description"
-          style={{
-            borderWidth: 1,
-            borderColor: colors.border,
-            padding: 12,
-            marginBottom: 16,
-            borderRadius: 6,
-            fontSize: 16,
-            height: 80,
-            backgroundColor: colors.surface,
-            color: colors.text,
-          }}
-          placeholderTextColor={colors.textSecondary}
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          textAlignVertical="top"
-        />
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "500",
+              marginBottom: 8,
+              color: colors.text,
+            }}
+          >
+            Description
+          </Text>
+          <TextInput
+            placeholder="Enter task description"
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 12,
+              marginBottom: 16,
+              borderRadius: 6,
+              fontSize: 16,
+              height: 80,
+              backgroundColor: colors.surface,
+              color: colors.text,
+            }}
+            placeholderTextColor={colors.textSecondary}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            textAlignVertical="top"
+          />
 
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "500",
-            marginBottom: 8,
-            color: colors.text,
-          }}
-        >
-          Category
-        </Text>
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            marginBottom: 16,
-          }}
-        >
-          {categories.map((cat) => (
-            <TouchableOpacity
-              key={cat.value}
-              onPress={() =>
-                setCategory(cat.value === category ? "" : cat.value)
-              }
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                marginRight: 8,
-                marginBottom: 8,
-                borderRadius: 16,
-                backgroundColor:
-                  category === cat.value ? colors.primary : colors.surface,
-                borderWidth: 1,
-                borderColor:
-                  category === cat.value ? colors.primary : colors.border,
-              }}
-            >
-              <Text
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "500",
+              marginBottom: 8,
+              color: colors.text,
+            }}
+          >
+            Category
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              marginBottom: 16,
+            }}
+          >
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat.value}
+                onPress={() =>
+                  setCategory(cat.value === category ? "" : cat.value)
+                }
                 style={{
-                  color:
-                    category === cat.value ? "#FFFFFF" : colors.textSecondary,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  marginRight: 8,
+                  marginBottom: 8,
+                  borderRadius: 16,
+                  backgroundColor:
+                    category === cat.value ? colors.primary : colors.surface,
+                  borderWidth: 1,
+                  borderColor:
+                    category === cat.value ? colors.primary : colors.border,
                 }}
               >
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+                <Text
+                  style={{
+                    color:
+                      category === cat.value ? "#FFFFFF" : colors.textSecondary,
+                  }}
+                >
+                  {cat.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "500",
-            marginBottom: 8,
-            color: colors.text,
-          }}
-        >
-          Location
-        </Text>
-        <View style={{ marginBottom: 16 }}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TextInput
-              placeholder="Enter location or use GPS"
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "500",
+              marginBottom: 8,
+              color: colors.text,
+            }}
+          >
+            Location
+          </Text>
+          <View style={{ marginBottom: 16 }}>
+            <TouchableOpacity
               style={{
                 borderWidth: 1,
                 borderColor: colors.border,
-                padding: 12,
+                padding: 16,
                 borderRadius: 6,
-                fontSize: 16,
                 backgroundColor: colors.surface,
-                color: colors.text,
-                flex: 1,
-                marginRight: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
-              placeholderTextColor={colors.textSecondary}
-              value={location}
-              onChangeText={setLocation}
-            />
+              onPress={() => setShowLocationPicker(true)}
+            >
+              <View style={{ flex: 1 }}>
+                {selectedLocationData ? (
+                  <View>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        color: colors.text,
+                        fontWeight: "500",
+                      }}
+                    >
+                      {selectedLocationData.name || "Selected Location"}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: colors.textSecondary,
+                        marginTop: 2,
+                      }}
+                    >
+                      {selectedLocationData.address}
+                    </Text>
+                  </View>
+                ) : (
+                  <View>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        color: colors.textSecondary,
+                      }}
+                    >
+                      Choose location from map
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: colors.textSecondary,
+                        marginTop: 2,
+                      }}
+                    >
+                      Tap to search or select on map
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <MaterialIcons name="map" size={24} color={colors.primary} />
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={{
                 backgroundColor: colors.primary,
@@ -405,6 +486,8 @@ const TaskFormScreen = () => {
                 borderRadius: 6,
                 flexDirection: "row",
                 alignItems: "center",
+                justifyContent: "center",
+                marginTop: 8,
               }}
               onPress={getCurrentLocation}
               disabled={isLoadingLocation}
@@ -414,186 +497,207 @@ const TaskFormScreen = () => {
                 size={20}
                 color="white"
               />
-              <Text style={{ color: "white", marginLeft: 4, fontSize: 12 }}>
-                {isLoadingLocation ? "Getting..." : "GPS"}
+              <Text style={{ color: "white", marginLeft: 8, fontSize: 14 }}>
+                {isLoadingLocation
+                  ? "Getting Current Location..."
+                  : "Use Current Location"}
               </Text>
             </TouchableOpacity>
-          </View>
 
-          {currentLocation && (
-            <View
-              style={{
-                backgroundColor: colors.success + "20",
-                padding: 8,
-                borderRadius: 6,
-                marginTop: 8,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <MaterialIcons
-                name="location-on"
-                size={16}
-                color={colors.success}
-              />
-              <Text
+            {currentLocation && (
+              <View
                 style={{
-                  color: colors.success,
-                  fontSize: 12,
-                  marginLeft: 4,
-                  flex: 1,
+                  backgroundColor: colors.success + "20",
+                  padding: 12,
+                  borderRadius: 6,
+                  marginTop: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
                 }}
               >
-                Location captured: {currentLocation.latitude.toFixed(6)},{" "}
-                {currentLocation.longitude.toFixed(6)}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Notification Settings */}
-        {currentLocation && (
-          <View style={{ marginBottom: 16 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 12,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "500",
-                  color: colors.text,
-                }}
-              >
-                Location Notifications
-              </Text>
-              <Switch
-                value={notifyOnLocation}
-                onValueChange={setNotifyOnLocation}
-                trackColor={{
-                  false: colors.border,
-                  true: colors.primary + "40",
-                }}
-                thumbColor={
-                  notifyOnLocation ? colors.primary : colors.textSecondary
-                }
-              />
-            </View>
-
-            {notifyOnLocation && (
-              <View>
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: "500",
-                    marginBottom: 8,
-                    color: colors.text,
-                  }}
-                >
-                  Notification Range: {notificationRange}m
-                </Text>
-
-                <View
-                  style={{
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    marginBottom: 8,
-                  }}
-                >
-                  {[50, 100, 200, 500, 1000].map((range) => (
-                    <TouchableOpacity
-                      key={range}
-                      onPress={() => setNotificationRange(range)}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        marginRight: 8,
-                        marginBottom: 8,
-                        borderRadius: 16,
-                        backgroundColor:
-                          notificationRange === range
-                            ? colors.primary
-                            : colors.surface,
-                        borderWidth: 1,
-                        borderColor:
-                          notificationRange === range
-                            ? colors.primary
-                            : colors.border,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color:
-                            notificationRange === range
-                              ? "white"
-                              : colors.textSecondary,
-                          fontSize: 12,
-                        }}
-                      >
-                        {range}m
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <View
-                  style={{
-                    backgroundColor: colors.info + "20",
-                    padding: 12,
-                    borderRadius: 8,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <MaterialIcons
-                    name="notifications"
-                    size={16}
-                    color={colors.info}
-                  />
+                <MaterialIcons
+                  name="location-on"
+                  size={20}
+                  color={colors.success}
+                />
+                <View style={{ marginLeft: 8, flex: 1 }}>
                   <Text
                     style={{
-                      color: colors.info,
-                      fontSize: 12,
-                      marginLeft: 8,
-                      flex: 1,
+                      color: colors.success,
+                      fontSize: 14,
+                      fontWeight: "500",
                     }}
                   >
-                    You will be notified when you are within {notificationRange}
-                    m of this location
+                    Location Ready
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.success,
+                      fontSize: 12,
+                      opacity: 0.8,
+                    }}
+                  >
+                    {selectedLocationData?.address ||
+                      location ||
+                      `${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`}
                   </Text>
                 </View>
               </View>
             )}
           </View>
-        )}
 
-        <TouchableOpacity
-          style={{
-            backgroundColor: colors.primary,
-            borderRadius: 6,
-            paddingHorizontal: 24,
-            paddingVertical: 16,
-            marginTop: 16,
-          }}
-          onPress={handleSubmit}
-        >
-          <Text
+          {/* Notification Settings */}
+          {currentLocation && (
+            <View style={{ marginBottom: 16 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "500",
+                    color: colors.text,
+                  }}
+                >
+                  Location Notifications
+                </Text>
+                <Switch
+                  value={notifyOnLocation}
+                  onValueChange={setNotifyOnLocation}
+                  trackColor={{
+                    false: colors.border,
+                    true: colors.primary + "40",
+                  }}
+                  thumbColor={
+                    notifyOnLocation ? colors.primary : colors.textSecondary
+                  }
+                />
+              </View>
+
+              {notifyOnLocation && (
+                <View>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "500",
+                      marginBottom: 8,
+                      color: colors.text,
+                    }}
+                  >
+                    Notification Range: {notificationRange}m
+                  </Text>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {[50, 100, 200, 500, 1000].map((range) => (
+                      <TouchableOpacity
+                        key={range}
+                        onPress={() => setNotificationRange(range)}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          marginRight: 8,
+                          marginBottom: 8,
+                          borderRadius: 16,
+                          backgroundColor:
+                            notificationRange === range
+                              ? colors.primary
+                              : colors.surface,
+                          borderWidth: 1,
+                          borderColor:
+                            notificationRange === range
+                              ? colors.primary
+                              : colors.border,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color:
+                              notificationRange === range
+                                ? "white"
+                                : colors.textSecondary,
+                            fontSize: 12,
+                          }}
+                        >
+                          {range}m
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <View
+                    style={{
+                      backgroundColor: colors.info + "20",
+                      padding: 12,
+                      borderRadius: 8,
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <MaterialIcons
+                      name="notifications"
+                      size={16}
+                      color={colors.info}
+                    />
+                    <Text
+                      style={{
+                        color: colors.info,
+                        fontSize: 12,
+                        marginLeft: 8,
+                        flex: 1,
+                      }}
+                    >
+                      You will be notified when you are within{" "}
+                      {notificationRange}m of this location
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+          <TouchableOpacity
             style={{
-              fontSize: 20,
-              color: "#FFFFFF",
-              textAlign: "center",
-              fontWeight: "600",
+              backgroundColor: colors.primary,
+              borderRadius: 6,
+              paddingHorizontal: 24,
+              paddingVertical: 16,
+              marginTop: 16,
             }}
+            onPress={handleSubmit}
           >
-            {isNew ? "Add Task" : "Update Task"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <Text
+              style={{
+                fontSize: 20,
+                color: "#FFFFFF",
+                textAlign: "center",
+                fontWeight: "600",
+              }}
+            >
+              {isNew ? "Add Task" : "Update Task"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      <LocationPicker
+        visible={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onLocationSelect={handleLocationSelect}
+        initialLocation={selectedLocationData || undefined}
+        colors={colors}
+      />
+    </>
   );
 };
 

@@ -1,14 +1,14 @@
 import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { onSnapshot } from "firebase/firestore";
 import { tasksRef } from "@/service/taskService";
 import { Task } from "@/types/task";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import WeeklyProgress from "@/components/WeeklyProgress";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Home = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -19,30 +19,64 @@ const Home = () => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    setUser(authUser);
-    // Fetch profile image from Firebase auth user
-    if (authUser?.photoURL) {
-      setProfileImage(authUser.photoURL);
+  const loadProfileImage = React.useCallback(async () => {
+    if (!authUser) return;
+
+    try {
+      const savedProfile = await AsyncStorage.getItem("userProfile");
+      if (savedProfile) {
+        const parsedProfile = JSON.parse(savedProfile);
+        if (parsedProfile.profileImage) {
+          setProfileImage(parsedProfile.profileImage);
+        } else if (authUser?.photoURL) {
+          setProfileImage(authUser.photoURL);
+        }
+      } else if (authUser?.photoURL) {
+        setProfileImage(authUser.photoURL);
+      }
+    } catch (error) {
+      console.error("Error loading profile image:", error);
+      // Fallback to Firebase Auth photo
+      if (authUser?.photoURL) {
+        setProfileImage(authUser.photoURL);
+      }
     }
   }, [authUser]);
 
   useEffect(() => {
+    setUser(authUser);
+    loadProfileImage();
+  }, [authUser, loadProfileImage]);
+
+  // Reload profile image when screen comes into focus (e.g., after updating profile)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProfileImage();
+    }, [loadProfileImage])
+  );
+
+  useEffect(() => {
+    if (!authUser?.uid) {
+      setTasks([]);
+      return;
+    }
+
     const unsubscribe = onSnapshot(
       tasksRef,
       (snapshot) => {
         const allTasks = snapshot.docs
           .map((d) => ({ id: d.id, ...d.data() }) as Task)
-          .filter((task) => task.userId === authUser?.uid); // Filter by current user
+          .filter((task) => task.userId === authUser?.uid);
+
         setTasks(allTasks);
       },
       (err) => {
-        console.log("Error listening:", err);
+        console.error("Error listening to tasks:", err);
       }
     );
 
     return () => unsubscribe();
-  }, [authUser]);
+  }, [authUser?.uid]); // Only depend on the uid, not the whole user object
 
   // Calculate statistics
   const totalTasks = tasks.length;
@@ -54,24 +88,6 @@ const Home = () => {
     (task) => task.priority === "high" && task.status === "pending"
   ).length;
   const tasksWithLocation = tasks.filter((task) => task.location).length;
-
-  // Weekly progress calculation
-  const getWeekStart = () => {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const diff = now.getDate() - dayOfWeek;
-    return new Date(now.setDate(diff));
-  };
-
-  const weekStart = getWeekStart();
-  const thisWeekTasks = tasks.filter((task) => {
-    const taskDate = new Date(task.createdAt || "");
-    return taskDate >= weekStart;
-  });
-  const completedThisWeek = thisWeekTasks.filter(
-    (task) => task.status === "completed"
-  ).length;
-  const totalThisWeek = thisWeekTasks.length;
 
   // Get tasks by category
   const tasksByCategory = tasks.reduce(
@@ -130,9 +146,14 @@ const Home = () => {
           }}
         >
           <View>
-            <Text style={{ color: "white", fontSize: 18 }}>Welcome back,</Text>
-            <Text style={{ color: "white", fontSize: 24, fontWeight: "bold" }}>
-              {user?.email?.split("@")[0] || "User"} 👋
+            <Text style={{ color: "white", fontSize: 23, fontWeight: "bold" }}>
+              {user?.email
+                ? user.email
+                    .split("@")[0]
+                    .replace(/[0-9]/g, "")
+                    .replace(/\./g, "")
+                    .replace(/_/g, "")
+                : "User"}
             </Text>
           </View>
           <TouchableOpacity
@@ -162,32 +183,49 @@ const Home = () => {
             )}
           </TouchableOpacity>
         </View>
+      </View>
 
+      {/* Task Completion Progress */}
+      <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
         <View
           style={{
-            backgroundColor: "rgba(255, 255, 255, 0.2)",
+            backgroundColor: colors.surface,
             padding: 16,
             borderRadius: 16,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
           }}
         >
-          <Text style={{ color: "white", fontSize: 16, marginBottom: 8 }}>
+          <Text
+            style={{
+              color: colors.text,
+              fontSize: 16,
+              marginBottom: 8,
+              fontWeight: "500",
+            }}
+          >
             Task Completion Rate
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ color: "white", fontSize: 30, fontWeight: "bold" }}>
+            <Text
+              style={{ color: colors.text, fontSize: 30, fontWeight: "bold" }}
+            >
               {completionRate}%
             </Text>
             <View style={{ marginLeft: 12, flex: 1 }}>
               <View
                 style={{
-                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                  backgroundColor: colors.border,
                   height: 8,
                   borderRadius: 4,
                 }}
               >
                 <View
                   style={{
-                    backgroundColor: "white",
+                    backgroundColor: colors.primary,
                     height: 8,
                     borderRadius: 4,
                     width: `${completionRate}%`,
@@ -196,15 +234,12 @@ const Home = () => {
               </View>
             </View>
           </View>
+          <Text
+            style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}
+          >
+            {completedTasks} of {totalTasks} tasks completed
+          </Text>
         </View>
-      </View>
-
-      {/* Weekly Progress */}
-      <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
-        <WeeklyProgress
-          completedThisWeek={completedThisWeek}
-          totalThisWeek={totalThisWeek}
-        />
       </View>
 
       {/* Quick Stats */}

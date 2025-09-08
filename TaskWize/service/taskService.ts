@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/firebase";
 import { Task } from "@/types/task";
+import LocationMonitoringService from "./locationMonitoringService";
 
 // tasks
 export const tasksRef = collection(db, "tasks");
@@ -59,6 +60,10 @@ export const getTaskById = async (id: string) => {
 
 export const deleteTask = async (id: string) => {
   const taskDocRef = doc(db, "tasks", id);
+
+  // Remove from location monitoring if it exists
+  LocationMonitoringService.removeTaskLocation(id);
+
   return deleteDoc(taskDocRef);
 };
 
@@ -69,6 +74,12 @@ export const updateTask = async (id: string, task: Task) => {
     ...taskData,
     updatedAt: new Date().toISOString(),
   };
+
+  // If task is completed, remove from location monitoring
+  if (taskData.status === "completed") {
+    LocationMonitoringService.removeTaskLocation(id);
+  }
+
   return updateDoc(taskDocRef, taskWithTimestamp);
 };
 

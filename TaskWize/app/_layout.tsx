@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LoaderProvider } from "@/context/LoaderContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { NotificationService } from "@/service/notificationService";
+import LocationMonitoringService from "@/service/locationMonitoringService";
 
 const RootLayout = () => {
   useEffect(() => {
@@ -21,7 +22,18 @@ const RootLayout = () => {
       }
     };
 
+    // Initialize location monitoring service
+    const setupLocationMonitoring = async () => {
+      try {
+        await LocationMonitoringService.initialize();
+        console.log("Location monitoring service initialized");
+      } catch (error) {
+        console.error("Error setting up location monitoring:", error);
+      }
+    };
+
     setupNotifications();
+    setupLocationMonitoring();
 
     // Setup notification listeners
     const cleanup = NotificationService.setupNotificationListeners();

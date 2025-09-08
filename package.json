@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "react-native-google-places-autocomplete": "^2.5.7",
+    "react-native-maps": "^1.26.1"
+  }
+}
