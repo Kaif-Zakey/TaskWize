@@ -1,6 +1,7 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
 
 const tabs = [
   { label: "Home", name: "home", icon: "home-filled" },
@@ -10,14 +11,17 @@ const tabs = [
 ] as const;
 
 const DashboardLayout = () => {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#007AFF",
-        tabBarInactiveTintColor: "#999",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#ccc",
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
         },
       }}
     >

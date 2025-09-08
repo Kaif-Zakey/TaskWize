@@ -11,7 +11,6 @@ import {
 import React, { useState, useEffect } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -26,7 +25,6 @@ interface UserProfile {
 
 const ProfileScreen = () => {
   const { user } = useAuth();
-  const { colors } = useTheme();
   const router = useRouter();
 
   const [profile, setProfile] = useState<UserProfile>({
@@ -166,31 +164,15 @@ const ProfileScreen = () => {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
+    <ScrollView className="flex-1 bg-gray-50">
       {/* Header */}
-      <View style={{ 
-        backgroundColor: colors.surface, 
-        paddingTop: 64, 
-        paddingBottom: 24, 
-        paddingHorizontal: 24, 
-        borderBottomWidth: 1, 
-        borderBottomColor: colors.border 
-      }}>
-        <View style={{ 
-          flexDirection: 'row', 
-          justifyContent: 'space-between', 
-          alignItems: 'center' 
-        }}>
+      <View className="bg-white pt-16 pb-6 px-6 border-b border-gray-200">
+        <View className="flex-row justify-between items-center">
           <View>
-            <Text style={{ 
-              fontSize: 30, 
-              fontWeight: 'bold', 
-              color: colors.text, 
-              marginBottom: 8 
-            }}>
+            <Text className="text-3xl font-bold text-gray-900 mb-2">
               Profile
             </Text>
-            <Text style={{ color: colors.textSecondary }}>
+            <Text className="text-gray-600">
               Manage your personal information
             </Text>
           </View>

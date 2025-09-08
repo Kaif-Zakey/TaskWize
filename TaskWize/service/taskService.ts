@@ -142,3 +142,71 @@ export const toggleTaskStatus = async (taskId: string) => {
   }
   return null;
 };
+
+// Dashboard Statistics Functions
+export const getTaskStatistics = async (userId: string) => {
+  const tasks = await getAllTaskByUserId(userId);
+
+  const stats = {
+    total: tasks.length,
+    completed: tasks.filter((task) => task.status === "completed").length,
+    pending: tasks.filter((task) => task.status === "pending").length,
+    highPriority: tasks.filter(
+      (task) => task.priority === "high" && task.status === "pending"
+    ).length,
+    withLocation: tasks.filter((task) => task.location).length,
+    byCategory: tasks.reduce(
+      (acc, task) => {
+        const category = task.category || "Other";
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    ),
+    completionRate:
+      tasks.length > 0
+        ? Math.round(
+            (tasks.filter((task) => task.status === "completed").length /
+              tasks.length) *
+              100
+          )
+        : 0,
+  };
+
+  return stats;
+};
+
+export const getRecentTasks = async (userId: string, limit: number = 5) => {
+  const tasks = await getAllTaskByUserId(userId);
+
+  return tasks
+    .filter((task) => task.status === "pending")
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || "").getTime() -
+        new Date(a.createdAt || "").getTime()
+    )
+    .slice(0, limit);
+};
+
+export const getUpcomingTasks = async (userId: string) => {
+  const tasks = await getAllTaskByUserId(userId);
+  const now = new Date();
+
+  return tasks
+    .filter((task) => task.status === "pending" && task.dueDate)
+    .filter((task) => new Date(task.dueDate!) >= now)
+    .sort(
+      (a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
+    )
+    .slice(0, 5);
+};
+
+export const getOverdueTasks = async (userId: string) => {
+  const tasks = await getAllTaskByUserId(userId);
+  const now = new Date();
+
+  return tasks
+    .filter((task) => task.status === "pending" && task.dueDate)
+    .filter((task) => new Date(task.dueDate!) < now);
+};

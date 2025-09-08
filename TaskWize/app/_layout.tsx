@@ -3,14 +3,17 @@ import "./../global.css";
 import { Slot } from "expo-router";
 import { AuthProvider } from "@/context/AuthContext";
 import { LoaderProvider } from "@/context/LoaderContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 const RootLayout = () => {
   return (
-    <LoaderProvider>
-      <AuthProvider>
-        <Slot />
-      </AuthProvider>
-    </LoaderProvider>
+    <ThemeProvider>
+      <LoaderProvider>
+        <AuthProvider>
+          <Slot />
+        </AuthProvider>
+      </LoaderProvider>
+    </ThemeProvider>
   );
 };
 
