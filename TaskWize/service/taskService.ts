@@ -11,7 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/firebase";
-import { Task } from "@/app/types/task";
+import { Task } from "@/types/task";
 
 // tasks
 export const tasksRef = collection(db, "tasks");

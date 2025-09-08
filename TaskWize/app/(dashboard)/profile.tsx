@@ -37,9 +37,9 @@ const ProfileScreen = () => {
     profileImage: null,
   });
 
+  const [tempProfile, setTempProfile] = useState<UserProfile>(profile);
   const [isEditing, setIsEditing] = useState(false);
   const [showImageOptions, setShowImageOptions] = useState(false);
-  const [tempProfile, setTempProfile] = useState<UserProfile>(profile);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -81,15 +81,21 @@ const ProfileScreen = () => {
     }
   };
 
-  const requestCameraPermissions = async () => {
-    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-    const mediaLibraryPermission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const handleEditToggle = () => {
+    if (isEditing) {
+      setTempProfile(profile);
+    }
+    setIsEditing(!isEditing);
+  };
 
-    return (
-      cameraPermission.status === "granted" &&
-      mediaLibraryPermission.status === "granted"
-    );
+  const handleSaveChanges = () => {
+    saveProfile(tempProfile);
+    setIsEditing(false);
+  };
+
+  const requestCameraPermissions = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    return status === "granted";
   };
 
   const handleTakePhoto = async () => {
@@ -146,131 +152,229 @@ const ProfileScreen = () => {
     }
   };
 
-  const handleSaveChanges = () => {
-    saveProfile(tempProfile);
-    setIsEditing(false);
-  };
-
-  const handleCancelEdit = () => {
-    setTempProfile(profile);
-    setIsEditing(false);
-  };
-
-  const handleRemoveImage = () => {
-    const newProfile = { ...tempProfile, profileImage: null };
-    setTempProfile(newProfile);
-    if (!isEditing) {
-      saveProfile(newProfile);
-    }
-    setShowImageOptions(false);
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: () => {
+            // Add logout logic here
+            router.replace("/(auth)/login");
+          },
+        },
+      ]
+    );
   };
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View style={{ 
-        backgroundColor: colors.surface, 
-        paddingTop: 64, 
-        paddingBottom: 24, 
-        paddingHorizontal: 24, 
-        borderBottomWidth: 1, 
-        borderBottomColor: colors.border 
-      }}>
-        <View style={{ 
-          flexDirection: 'row', 
-          justifyContent: 'space-between', 
-          alignItems: 'center' 
-        }}>
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          paddingTop: 64,
+          paddingBottom: 24,
+          paddingHorizontal: 24,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <View>
-            <Text style={{ 
-              fontSize: 30, 
-              fontWeight: 'bold', 
-              color: colors.text, 
-              marginBottom: 8 
-            }}>
+            <Text
+              style={{
+                fontSize: 30,
+                fontWeight: "bold",
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
               Profile
             </Text>
             <Text style={{ color: colors.textSecondary }}>
               Manage your personal information
             </Text>
           </View>
-          {!isEditing ? (
-            <TouchableOpacity
-              className="bg-blue-500 px-4 py-2 rounded-lg"
-              onPress={() => setIsEditing(true)}
-            >
-              <Text className="text-white font-semibold">Edit</Text>
-            </TouchableOpacity>
-          ) : (
-            <View className="flex-row gap-2">
+          {isEditing ? (
+            <View style={{ flexDirection: "row", gap: 12 }}>
               <TouchableOpacity
-                className="bg-gray-500 px-3 py-2 rounded-lg"
-                onPress={handleCancelEdit}
+                style={{
+                  backgroundColor: colors.border,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                }}
+                onPress={handleEditToggle}
               >
-                <Text className="text-white font-semibold">Cancel</Text>
+                <Text style={{ 
+                  color: colors.text, 
+                  fontWeight: '600' 
+                }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                className="bg-green-500 px-3 py-2 rounded-lg"
+                style={{
+                  backgroundColor: colors.primary,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                }}
                 onPress={handleSaveChanges}
               >
-                <Text className="text-white font-semibold">Save</Text>
+                <Text style={{ 
+                  color: '#FFFFFF', 
+                  fontWeight: '600' 
+                }}>Save</Text>
               </TouchableOpacity>
             </View>
+          ) : (
+            <TouchableOpacity
+              style={{
+                backgroundColor: colors.primary,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 8,
+              }}
+              onPress={handleEditToggle}
+            >
+              <Text style={{ 
+                color: '#FFFFFF', 
+                fontWeight: '600' 
+              }}>Edit</Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>
 
       {/* Profile Picture Section */}
-      <View className="bg-white mt-6 mx-6 p-6 rounded-lg shadow-sm">
-        <Text className="text-xl font-semibold text-gray-900 mb-4">
+      <View style={{ 
+        backgroundColor: colors.surface, 
+        marginTop: 24, 
+        marginHorizontal: 24, 
+        padding: 24, 
+        borderRadius: 8, 
+        shadowOpacity: 0.05, 
+        shadowRadius: 4, 
+        elevation: 2 
+      }}>
+        <Text style={{ 
+          fontSize: 20, 
+          fontWeight: '600', 
+          color: colors.text, 
+          marginBottom: 16 
+        }}>
           Profile Picture
         </Text>
-        <View className="items-center">
+        <View style={{ alignItems: 'center' }}>
           <TouchableOpacity
-            className="relative mb-4"
+            style={{ position: 'relative', marginBottom: 16 }}
             onPress={() => isEditing && setShowImageOptions(true)}
           >
             {tempProfile.profileImage ? (
               <Image
                 source={{ uri: tempProfile.profileImage }}
-                className="w-32 h-32 rounded-full"
+                style={{ 
+                  width: 128, 
+                  height: 128, 
+                  borderRadius: 64 
+                }}
               />
             ) : (
-              <View className="w-32 h-32 rounded-full bg-gray-200 items-center justify-center">
-                <MaterialIcons name="person" size={64} color="#9ca3af" />
+              <View style={{ 
+                width: 128, 
+                height: 128, 
+                borderRadius: 64, 
+                backgroundColor: colors.border, 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}>
+                <MaterialIcons name="person" size={64} color={colors.textSecondary} />
               </View>
             )}
             {isEditing && (
-              <View className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-2">
+              <View style={{ 
+                position: 'absolute', 
+                bottom: 0, 
+                right: 0, 
+                backgroundColor: colors.primary, 
+                borderRadius: 16, 
+                padding: 8 
+              }}>
                 <MaterialIcons name="camera-alt" size={20} color="white" />
               </View>
             )}
           </TouchableOpacity>
           {!isEditing && (
             <TouchableOpacity
-              className="bg-blue-500 px-4 py-2 rounded-lg"
+              style={{ 
+                backgroundColor: colors.primary, 
+                paddingHorizontal: 16, 
+                paddingVertical: 8, 
+                borderRadius: 8 
+              }}
               onPress={() => setShowImageOptions(true)}
             >
-              <Text className="text-white font-semibold">Change Photo</Text>
+              <Text style={{ 
+                color: '#FFFFFF', 
+                fontWeight: '600' 
+              }}>Change Photo</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       {/* Personal Information Section */}
-      <View className="bg-white mt-6 mx-6 p-6 rounded-lg shadow-sm">
-        <Text className="text-xl font-semibold text-gray-900 mb-4">
+      <View style={{ 
+        backgroundColor: colors.surface, 
+        marginTop: 24, 
+        marginHorizontal: 24, 
+        padding: 24, 
+        borderRadius: 8, 
+        shadowOpacity: 0.05, 
+        shadowRadius: 4, 
+        elevation: 2 
+      }}>
+        <Text style={{ 
+          fontSize: 20, 
+          fontWeight: '600', 
+          color: colors.text, 
+          marginBottom: 16 
+        }}>
           Personal Information
         </Text>
 
         {/* Display Name */}
-        <View className="mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ 
+            fontSize: 14, 
+            fontWeight: '500', 
+            color: colors.text, 
+            marginBottom: 8 
+          }}>
             Display Name
           </Text>
           {isEditing ? (
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+              style={{ 
+                borderWidth: 1, 
+                borderColor: colors.border, 
+                borderRadius: 8, 
+                paddingHorizontal: 16, 
+                paddingVertical: 12, 
+                fontSize: 16, 
+                backgroundColor: colors.surface, 
+                color: colors.text 
+              }}
+              placeholderTextColor={colors.textSecondary}
               value={tempProfile.displayName}
               onChangeText={(text) =>
                 setTempProfile({ ...tempProfile, displayName: text })
@@ -278,18 +382,41 @@ const ProfileScreen = () => {
               placeholder="Enter your display name"
             />
           ) : (
-            <Text className="text-base text-gray-900 py-3 px-4 bg-gray-50 rounded-lg">
+            <Text style={{ 
+              fontSize: 16, 
+              color: colors.text, 
+              paddingVertical: 12, 
+              paddingHorizontal: 16, 
+              backgroundColor: colors.background, 
+              borderRadius: 8 
+            }}>
               {profile.displayName || "Not specified"}
             </Text>
           )}
         </View>
 
         {/* Bio */}
-        <View className="mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">Bio</Text>
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ 
+            fontSize: 14, 
+            fontWeight: '500', 
+            color: colors.text, 
+            marginBottom: 8 
+          }}>Bio</Text>
           {isEditing ? (
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 text-base h-24"
+              style={{ 
+                borderWidth: 1, 
+                borderColor: colors.border, 
+                borderRadius: 8, 
+                paddingHorizontal: 16, 
+                paddingVertical: 12, 
+                fontSize: 16, 
+                height: 96, 
+                backgroundColor: colors.surface, 
+                color: colors.text 
+              }}
+              placeholderTextColor={colors.textSecondary}
               value={tempProfile.bio}
               onChangeText={(text) =>
                 setTempProfile({ ...tempProfile, bio: text })
@@ -299,20 +426,43 @@ const ProfileScreen = () => {
               textAlignVertical="top"
             />
           ) : (
-            <Text className="text-base text-gray-900 py-3 px-4 bg-gray-50 rounded-lg min-h-[60px]">
+            <Text style={{ 
+              fontSize: 16, 
+              color: colors.text, 
+              paddingVertical: 12, 
+              paddingHorizontal: 16, 
+              backgroundColor: colors.background, 
+              borderRadius: 8, 
+              minHeight: 60 
+            }}>
               {profile.bio || "No bio added yet"}
             </Text>
           )}
         </View>
 
         {/* Location */}
-        <View className="mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ 
+            fontSize: 14, 
+            fontWeight: '500', 
+            color: colors.text, 
+            marginBottom: 8 
+          }}>
             Location
           </Text>
           {isEditing ? (
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+              style={{ 
+                borderWidth: 1, 
+                borderColor: colors.border, 
+                borderRadius: 8, 
+                paddingHorizontal: 16, 
+                paddingVertical: 12, 
+                fontSize: 16, 
+                backgroundColor: colors.surface, 
+                color: colors.text 
+              }}
+              placeholderTextColor={colors.textSecondary}
               value={tempProfile.location}
               onChangeText={(text) =>
                 setTempProfile({ ...tempProfile, location: text })
@@ -320,20 +470,42 @@ const ProfileScreen = () => {
               placeholder="Enter your location"
             />
           ) : (
-            <Text className="text-base text-gray-900 py-3 px-4 bg-gray-50 rounded-lg">
+            <Text style={{ 
+              fontSize: 16, 
+              color: colors.text, 
+              paddingVertical: 12, 
+              paddingHorizontal: 16, 
+              backgroundColor: colors.background, 
+              borderRadius: 8 
+            }}>
               {profile.location || "Not specified"}
             </Text>
           )}
         </View>
 
         {/* Phone */}
-        <View className="mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ 
+            fontSize: 14, 
+            fontWeight: '500', 
+            color: colors.text, 
+            marginBottom: 8 
+          }}>
             Phone Number
           </Text>
           {isEditing ? (
             <TextInput
-              className="border border-gray-300 rounded-lg px-4 py-3 text-base"
+              style={{ 
+                borderWidth: 1, 
+                borderColor: colors.border, 
+                borderRadius: 8, 
+                paddingHorizontal: 16, 
+                paddingVertical: 12, 
+                fontSize: 16, 
+                backgroundColor: colors.surface, 
+                color: colors.text 
+              }}
+              placeholderTextColor={colors.textSecondary}
               value={tempProfile.phone}
               onChangeText={(text) =>
                 setTempProfile({ ...tempProfile, phone: text })
@@ -342,7 +514,14 @@ const ProfileScreen = () => {
               keyboardType="phone-pad"
             />
           ) : (
-            <Text className="text-base text-gray-900 py-3 px-4 bg-gray-50 rounded-lg">
+            <Text style={{ 
+              fontSize: 16, 
+              color: colors.text, 
+              paddingVertical: 12, 
+              paddingHorizontal: 16, 
+              backgroundColor: colors.background, 
+              borderRadius: 8 
+            }}>
               {profile.phone || "Not specified"}
             </Text>
           )}
@@ -350,63 +529,105 @@ const ProfileScreen = () => {
       </View>
 
       {/* Account Information Section */}
-      <View className="bg-white mt-6 mx-6 p-6 rounded-lg shadow-sm">
-        <Text className="text-xl font-semibold text-gray-900 mb-4">
+      <View style={{ 
+        backgroundColor: colors.surface, 
+        marginTop: 24, 
+        marginHorizontal: 24, 
+        padding: 24, 
+        borderRadius: 8, 
+        shadowOpacity: 0.05, 
+        shadowRadius: 4, 
+        elevation: 2 
+      }}>
+        <Text style={{ 
+          fontSize: 20, 
+          fontWeight: '600', 
+          color: colors.text, 
+          marginBottom: 16 
+        }}>
           Account Information
         </Text>
 
-        <View className="mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">Email</Text>
-          <Text className="text-base text-gray-900 py-3 px-4 bg-gray-50 rounded-lg">
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ 
+            fontSize: 14, 
+            fontWeight: '500', 
+            color: colors.text, 
+            marginBottom: 8 
+          }}>Email</Text>
+          <Text style={{ 
+            fontSize: 16, 
+            color: colors.text, 
+            paddingVertical: 12, 
+            paddingHorizontal: 16, 
+            backgroundColor: colors.background, 
+            borderRadius: 8 
+          }}>
             {user?.email}
           </Text>
         </View>
 
-        <View className="mb-4">
-          <Text className="text-sm font-medium text-gray-700 mb-2">
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ 
+            fontSize: 14, 
+            fontWeight: '500', 
+            color: colors.text, 
+            marginBottom: 8 
+          }}>
             Member Since
           </Text>
-          <Text className="text-base text-gray-900 py-3 px-4 bg-gray-50 rounded-lg">
-            {user?.metadata?.creationTime
-              ? new Date(user.metadata.creationTime).toLocaleDateString()
-              : "Unknown"}
+          <Text style={{ 
+            fontSize: 16, 
+            color: colors.text, 
+            paddingVertical: 12, 
+            paddingHorizontal: 16, 
+            backgroundColor: colors.background, 
+            borderRadius: 8 
+          }}>
+            {new Date(user?.metadata?.creationTime || "").toLocaleDateString()}
           </Text>
         </View>
-
-        <TouchableOpacity
-          className="flex-row items-center justify-between py-3 px-4 bg-blue-50 rounded-lg border border-blue-200"
-          onPress={() => router.push("/(dashboard)/settings")}
-        >
-          <View className="flex-row items-center">
-            <MaterialIcons name="settings" size={24} color="#3b82f6" />
-            <Text className="text-blue-700 font-semibold ml-3">
-              Account Settings
-            </Text>
-          </View>
-          <MaterialIcons name="chevron-right" size={24} color="#3b82f6" />
-        </TouchableOpacity>
       </View>
 
-      {/* Statistics Section */}
-      <View className="bg-white mt-6 mx-6 mb-8 p-6 rounded-lg shadow-sm">
-        <Text className="text-xl font-semibold text-gray-900 mb-4">
-          Profile Statistics
+      {/* Actions Section */}
+      <View style={{ 
+        backgroundColor: colors.surface, 
+        marginTop: 24, 
+        marginHorizontal: 24, 
+        marginBottom: 32, 
+        padding: 24, 
+        borderRadius: 8, 
+        shadowOpacity: 0.05, 
+        shadowRadius: 4, 
+        elevation: 2 
+      }}>
+        <Text style={{ 
+          fontSize: 20, 
+          fontWeight: '600', 
+          color: colors.text, 
+          marginBottom: 16 
+        }}>
+          Account Actions
         </Text>
 
-        <View className="flex-row justify-between">
-          <View className="items-center flex-1">
-            <Text className="text-2xl font-bold text-blue-600">0</Text>
-            <Text className="text-sm text-gray-600">Tasks Created</Text>
-          </View>
-          <View className="items-center flex-1">
-            <Text className="text-2xl font-bold text-green-600">0</Text>
-            <Text className="text-sm text-gray-600">Completed</Text>
-          </View>
-          <View className="items-center flex-1">
-            <Text className="text-2xl font-bold text-orange-600">0</Text>
-            <Text className="text-sm text-gray-600">In Progress</Text>
-          </View>
-        </View>
+        <TouchableOpacity
+          style={{ 
+            backgroundColor: colors.error, 
+            paddingVertical: 12, 
+            paddingHorizontal: 16, 
+            borderRadius: 8, 
+            alignItems: 'center' 
+          }}
+          onPress={handleLogout}
+        >
+          <Text style={{ 
+            color: '#FFFFFF', 
+            fontWeight: '600', 
+            fontSize: 16 
+          }}>
+            Logout
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Image Options Modal */}
@@ -416,49 +637,78 @@ const ProfileScreen = () => {
         animationType="slide"
         onRequestClose={() => setShowImageOptions(false)}
       >
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-xl p-6">
-            <Text className="text-xl font-bold text-gray-900 mb-4 text-center">
-              Profile Picture Options
+        <View style={{ 
+          flex: 1, 
+          backgroundColor: 'rgba(0,0,0,0.5)', 
+          justifyContent: 'flex-end' 
+        }}>
+          <View style={{ 
+            backgroundColor: colors.surface, 
+            paddingTop: 24, 
+            paddingBottom: 40, 
+            paddingHorizontal: 24, 
+            borderTopLeftRadius: 20, 
+            borderTopRightRadius: 20 
+          }}>
+            <Text style={{ 
+              fontSize: 18, 
+              fontWeight: '600', 
+              color: colors.text, 
+              marginBottom: 20, 
+              textAlign: 'center' 
+            }}>
+              Choose Photo Option
             </Text>
-
+            
             <TouchableOpacity
-              className="flex-row items-center py-4 px-4 bg-blue-50 rounded-lg mb-3"
+              style={{ 
+                backgroundColor: colors.primary, 
+                padding: 16, 
+                borderRadius: 8, 
+                marginBottom: 12, 
+                alignItems: 'center' 
+              }}
               onPress={handleTakePhoto}
             >
-              <MaterialIcons name="camera-alt" size={24} color="#3b82f6" />
-              <Text className="text-blue-700 font-semibold ml-3 text-lg">
+              <Text style={{ 
+                color: '#FFFFFF', 
+                fontWeight: '600', 
+                fontSize: 16 
+              }}>
                 Take Photo
               </Text>
             </TouchableOpacity>
-
+            
             <TouchableOpacity
-              className="flex-row items-center py-4 px-4 bg-green-50 rounded-lg mb-3"
+              style={{ 
+                backgroundColor: colors.border, 
+                padding: 16, 
+                borderRadius: 8, 
+                marginBottom: 12, 
+                alignItems: 'center' 
+              }}
               onPress={handlePickImage}
             >
-              <MaterialIcons name="photo-library" size={24} color="#10b981" />
-              <Text className="text-green-700 font-semibold ml-3 text-lg">
+              <Text style={{ 
+                color: colors.text, 
+                fontWeight: '600', 
+                fontSize: 16 
+              }}>
                 Choose from Gallery
               </Text>
             </TouchableOpacity>
-
-            {(tempProfile.profileImage || profile.profileImage) && (
-              <TouchableOpacity
-                className="flex-row items-center py-4 px-4 bg-red-50 rounded-lg mb-3"
-                onPress={handleRemoveImage}
-              >
-                <MaterialIcons name="delete" size={24} color="#ef4444" />
-                <Text className="text-red-700 font-semibold ml-3 text-lg">
-                  Remove Photo
-                </Text>
-              </TouchableOpacity>
-            )}
-
+            
             <TouchableOpacity
-              className="py-4 px-4 bg-gray-200 rounded-lg"
+              style={{ 
+                padding: 16, 
+                alignItems: 'center' 
+              }}
               onPress={() => setShowImageOptions(false)}
             >
-              <Text className="text-gray-700 font-semibold text-center text-lg">
+              <Text style={{ 
+                color: colors.textSecondary, 
+                fontSize: 16 
+              }}>
                 Cancel
               </Text>
             </TouchableOpacity>

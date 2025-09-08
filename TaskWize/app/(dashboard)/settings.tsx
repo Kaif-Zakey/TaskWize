@@ -12,6 +12,7 @@ import React, { useState, useEffect } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useLoader } from "@/context/LoaderContext";
 import { useRouter } from "expo-router";
 import {
   updatePassword,
@@ -39,6 +40,7 @@ interface AppPreferences {
 const SettingsScreen = () => {
   const { user, logout } = useAuth();
   const { isDarkMode, toggleDarkMode, colors } = useTheme();
+  const { showLoader, hideLoader } = useLoader();
   const router = useRouter();
 
   // App Preferences State
@@ -196,11 +198,15 @@ const SettingsScreen = () => {
         style: "destructive",
         onPress: async () => {
           try {
+            showLoader();
             await logout();
+            // Navigate to login screen
             router.replace("/(auth)/login");
           } catch (error) {
             console.error("Logout error:", error);
             Alert.alert("Error", "Failed to logout. Please try again.");
+          } finally {
+            hideLoader();
           }
         },
       },

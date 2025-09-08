@@ -1,23 +1,30 @@
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { onSnapshot } from "firebase/firestore";
 import { tasksRef } from "@/service/taskService";
-import { Task } from "@/app/types/task";
+import { Task } from "@/types/task";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import WeeklyProgress from "@/components/WeeklyProgress";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Home = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const router = useRouter();
   const { user: authUser } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     setUser(authUser);
+    // Fetch profile image from Firebase auth user
+    if (authUser?.photoURL) {
+      setProfileImage(authUser.photoURL);
+    }
   }, [authUser]);
 
   useEffect(() => {
@@ -104,61 +111,86 @@ const Home = () => {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View style={{ 
-        backgroundColor: colors.primary, 
-        paddingHorizontal: 24, 
-        paddingVertical: 32, 
-        borderBottomLeftRadius: 24, 
-        borderBottomRightRadius: 24 
-      }}>
-        <View style={{ 
-          flexDirection: 'row', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: 16 
-        }}>
+      <View
+        style={{
+          backgroundColor: colors.primary,
+          paddingHorizontal: 24,
+          paddingTop: insets.top + 20,
+          paddingBottom: 32,
+          borderBottomLeftRadius: 24,
+          borderBottomRightRadius: 24,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
+          }}
+        >
           <View>
-            <Text style={{ color: 'white', fontSize: 18 }}>Welcome back,</Text>
-            <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold' }}>
+            <Text style={{ color: "white", fontSize: 18 }}>Welcome back,</Text>
+            <Text style={{ color: "white", fontSize: 24, fontWeight: "bold" }}>
               {user?.email?.split("@")[0] || "User"} 👋
             </Text>
           </View>
           <TouchableOpacity
-            style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.2)', 
-              padding: 12, 
-              borderRadius: 50 
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
+              padding: profileImage ? 2 : 12,
+              borderRadius: 50,
+              width: 48,
+              height: 48,
+              justifyContent: "center",
+              alignItems: "center",
             }}
             onPress={() => router.push("/(dashboard)/profile")}
           >
-            <MaterialIcons name="person" size={24} color="white" />
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                }}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons name="person" size={24} color="white" />
+            )}
           </TouchableOpacity>
         </View>
 
-        <View style={{ 
-          backgroundColor: 'rgba(255, 255, 255, 0.2)', 
-          padding: 16, 
-          borderRadius: 16 
-        }}>
-          <Text style={{ color: 'white', fontSize: 16, marginBottom: 8 }}>
+        <View
+          style={{
+            backgroundColor: "rgba(255, 255, 255, 0.2)",
+            padding: 16,
+            borderRadius: 16,
+          }}
+        >
+          <Text style={{ color: "white", fontSize: 16, marginBottom: 8 }}>
             Task Completion Rate
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ color: "white", fontSize: 30, fontWeight: "bold" }}>
               {completionRate}%
             </Text>
             <View style={{ marginLeft: 12, flex: 1 }}>
-              <View style={{ 
-                backgroundColor: 'rgba(255, 255, 255, 0.3)', 
-                height: 8, 
-                borderRadius: 4 
-              }}>
+              <View
+                style={{
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                  height: 8,
+                  borderRadius: 4,
+                }}
+              >
                 <View
-                  style={{ 
-                    backgroundColor: 'white', 
-                    height: 8, 
+                  style={{
+                    backgroundColor: "white",
+                    height: 8,
                     borderRadius: 4,
-                    width: `${completionRate}%` 
+                    width: `${completionRate}%`,
                   }}
                 />
               </View>
@@ -177,136 +209,200 @@ const Home = () => {
 
       {/* Quick Stats */}
       <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
-        <Text style={{ 
-          fontSize: 20, 
-          fontWeight: 'bold', 
-          color: colors.text, 
-          marginBottom: 16 
-        }}>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: "bold",
+            color: colors.text,
+            marginBottom: 16,
+          }}
+        >
           Quick Overview
         </Text>
 
-        <View style={{ 
-          flexDirection: 'row', 
-          flexWrap: 'wrap', 
-          justifyContent: 'space-between' 
-        }}>
-          <View style={{ 
-            backgroundColor: colors.surface, 
-            padding: 16, 
-            borderRadius: 12, 
-            width: '48%', 
-            marginBottom: 12,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
-            elevation: 2
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              padding: 16,
+              borderRadius: 12,
+              width: "48%",
+              marginBottom: 12,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
               <MaterialIcons name="task-alt" size={24} color={colors.info} />
-              <Text style={{ 
-                marginLeft: 8, 
-                color: colors.textSecondary, 
-                fontWeight: '500' 
-              }}>
+              <Text
+                style={{
+                  marginLeft: 8,
+                  color: colors.textSecondary,
+                  fontWeight: "500",
+                }}
+              >
                 Total Tasks
               </Text>
             </View>
-            <Text style={{ 
-              fontSize: 24, 
-              fontWeight: 'bold', 
-              color: colors.text 
-            }}>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: colors.text,
+              }}
+            >
               {totalTasks}
             </Text>
           </View>
 
-          <View style={{ 
-            backgroundColor: colors.surface, 
-            padding: 16, 
-            borderRadius: 12, 
-            width: '48%', 
-            marginBottom: 12,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
-            elevation: 2
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              padding: 16,
+              borderRadius: 12,
+              width: "48%",
+              marginBottom: 12,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
               <MaterialIcons name="pending" size={24} color={colors.warning} />
-              <Text style={{ 
-                marginLeft: 8, 
-                color: colors.textSecondary, 
-                fontWeight: '500' 
-              }}>Pending</Text>
+              <Text
+                style={{
+                  marginLeft: 8,
+                  color: colors.textSecondary,
+                  fontWeight: "500",
+                }}
+              >
+                Pending
+              </Text>
             </View>
-            <Text style={{ 
-              fontSize: 24, 
-              fontWeight: 'bold', 
-              color: colors.warning 
-            }}>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: colors.warning,
+              }}
+            >
               {pendingTasks}
             </Text>
           </View>
 
-          <View style={{ 
-            backgroundColor: colors.surface, 
-            padding: 16, 
-            borderRadius: 12, 
-            width: '48%', 
-            marginBottom: 12,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
-            elevation: 2
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <MaterialIcons name="check-circle" size={24} color={colors.success} />
-              <Text style={{ 
-                marginLeft: 8, 
-                color: colors.textSecondary, 
-                fontWeight: '500' 
-              }}>Completed</Text>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              padding: 16,
+              borderRadius: 12,
+              width: "48%",
+              marginBottom: 12,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <MaterialIcons
+                name="check-circle"
+                size={24}
+                color={colors.success}
+              />
+              <Text
+                style={{
+                  marginLeft: 8,
+                  color: colors.textSecondary,
+                  fontWeight: "500",
+                }}
+              >
+                Completed
+              </Text>
             </View>
-            <Text style={{ 
-              fontSize: 24, 
-              fontWeight: 'bold', 
-              color: colors.success 
-            }}>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: colors.success,
+              }}
+            >
               {completedTasks}
             </Text>
           </View>
 
-          <View style={{ 
-            backgroundColor: colors.surface, 
-            padding: 16, 
-            borderRadius: 12, 
-            width: '48%', 
-            marginBottom: 12,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
-            elevation: 2
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <MaterialIcons name="priority-high" size={24} color={colors.error} />
-              <Text style={{ 
-                marginLeft: 8, 
-                color: colors.textSecondary, 
-                fontWeight: '500' 
-              }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              padding: 16,
+              borderRadius: 12,
+              width: "48%",
+              marginBottom: 12,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <MaterialIcons
+                name="priority-high"
+                size={24}
+                color={colors.error}
+              />
+              <Text
+                style={{
+                  marginLeft: 8,
+                  color: colors.textSecondary,
+                  fontWeight: "500",
+                }}
+              >
                 High Priority
               </Text>
             </View>
-            <Text style={{ 
-              fontSize: 24, 
-              fontWeight: 'bold', 
-              color: colors.error 
-            }}>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                color: colors.error,
+              }}
+            >
               {highPriorityTasks}
             </Text>
           </View>
@@ -316,34 +412,65 @@ const Home = () => {
       {/* Categories Breakdown */}
       {Object.keys(tasksByCategory).length > 0 && (
         <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
-          <Text style={{ 
-            fontSize: 20, 
-            fontWeight: 'bold', 
-            color: colors.text, 
-            marginBottom: 16 
-          }}>
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              color: colors.text,
+              marginBottom: 16,
+            }}
+          >
             Tasks by Category
           </Text>
-          <View style={{ 
-            backgroundColor: colors.surface, 
-            padding: 16, 
-            borderRadius: 12,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
-            elevation: 2
-          }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              padding: 16,
+              borderRadius: 12,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+            }}
+          >
             {Object.entries(tasksByCategory).map(([category, count]) => (
               <View
                 key={category}
-                className="flex-row justify-between items-center py-2"
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  paddingVertical: 8,
+                }}
               >
-                <View className="flex-row items-center">
-                  <View className="w-3 h-3 bg-blue-500 rounded-full mr-3" />
-                  <Text className="text-gray-700 capitalize">{category}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <View
+                    style={{
+                      width: 12,
+                      height: 12,
+                      backgroundColor: colors.primary,
+                      borderRadius: 6,
+                      marginRight: 12,
+                    }}
+                  />
+                  <Text
+                    style={{
+                      color: colors.text,
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {category}
+                  </Text>
                 </View>
-                <Text className="text-gray-900 font-semibold">{count}</Text>
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontWeight: "bold",
+                  }}
+                >
+                  {count}
+                </Text>
               </View>
             ))}
           </View>
@@ -352,14 +479,41 @@ const Home = () => {
 
       {/* Today's Tasks */}
       {todayTasks.length > 0 && (
-        <View className="px-6 py-4">
-          <View className="flex-row items-center mb-4">
-            <MaterialIcons name="today" size={24} color="#EF4444" />
-            <Text className="text-xl font-bold text-gray-800 ml-2">
+        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
+            <MaterialIcons name="today" size={24} color={colors.error} />
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "bold",
+                color: colors.text,
+                marginLeft: 8,
+              }}
+            >
               Due Today
             </Text>
-            <View className="bg-red-100 px-2 py-1 rounded-full ml-2">
-              <Text className="text-red-800 text-xs font-semibold">
+            <View
+              style={{
+                backgroundColor: colors.error + "20",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 12,
+                marginLeft: 8,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.error,
+                  fontSize: 12,
+                  fontWeight: "bold",
+                }}
+              >
                 {todayTasks.length}
               </Text>
             </View>
@@ -368,20 +522,42 @@ const Home = () => {
           {todayTasks.map((task) => (
             <TouchableOpacity
               key={task.id}
-              className="bg-red-50 border border-red-200 p-4 rounded-xl mb-3"
+              style={{
+                backgroundColor: colors.error + "10",
+                borderWidth: 1,
+                borderColor: colors.error + "30",
+                padding: 16,
+                borderRadius: 12,
+                marginBottom: 12,
+              }}
               onPress={() => router.push(`/(dashboard)/tasks/${task.id}`)}
             >
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1">
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}
+              >
+                <View style={{ flex: 1 }}>
                   <Text
-                    className="text-red-800 font-semibold text-base"
+                    style={{
+                      color: colors.error,
+                      fontWeight: "bold",
+                      fontSize: 16,
+                    }}
                     numberOfLines={1}
                   >
                     {task.title}
                   </Text>
                   {task.description && (
                     <Text
-                      className="text-red-600 text-sm mt-1"
+                      style={{
+                        color: colors.error,
+                        opacity: 0.8,
+                        fontSize: 14,
+                        marginTop: 4,
+                      }}
                       numberOfLines={1}
                     >
                       {task.description}
@@ -391,7 +567,7 @@ const Home = () => {
                 <MaterialIcons
                   name="arrow-forward-ios"
                   size={16}
-                  color="#DC2626"
+                  color={colors.error}
                 />
               </View>
             </TouchableOpacity>
@@ -401,64 +577,135 @@ const Home = () => {
 
       {/* Recent Pending Tasks */}
       {recentPendingTasks.length > 0 && (
-        <View className="px-6 py-4">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-xl font-bold text-gray-800">
+        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "bold",
+                color: colors.text,
+              }}
+            >
               Recent Pending Tasks
             </Text>
             <TouchableOpacity onPress={() => router.push("/(dashboard)/tasks")}>
-              <Text className="text-blue-500 font-medium">View All</Text>
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontWeight: "500",
+                }}
+              >
+                View All
+              </Text>
             </TouchableOpacity>
           </View>
 
           {recentPendingTasks.map((task) => (
             <TouchableOpacity
               key={task.id}
-              className="bg-white p-4 rounded-xl shadow-sm mb-3"
+              style={{
+                backgroundColor: colors.surface,
+                padding: 16,
+                borderRadius: 12,
+                marginBottom: 12,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+                elevation: 2,
+              }}
               onPress={() => router.push(`/(dashboard)/tasks/${task.id}`)}
             >
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1">
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}
+              >
+                <View style={{ flex: 1 }}>
                   <Text
-                    className="text-gray-800 font-semibold text-base"
+                    style={{
+                      color: colors.text,
+                      fontWeight: "bold",
+                      fontSize: 16,
+                    }}
                     numberOfLines={1}
                   >
                     {task.title}
                   </Text>
                   {task.description && (
                     <Text
-                      className="text-gray-600 text-sm mt-1"
+                      style={{
+                        color: colors.textSecondary,
+                        fontSize: 14,
+                        marginTop: 4,
+                      }}
                       numberOfLines={2}
                     >
                       {task.description}
                     </Text>
                   )}
-                  <View className="flex-row items-center mt-2">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginTop: 8,
+                    }}
+                  >
                     {task.category && (
-                      <View className="bg-blue-100 px-2 py-1 rounded-full mr-2">
-                        <Text className="text-blue-800 text-xs capitalize">
+                      <View
+                        style={{
+                          backgroundColor: colors.primary + "20",
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 12,
+                          marginRight: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: colors.primary,
+                            fontSize: 12,
+                            textTransform: "capitalize",
+                          }}
+                        >
                           {task.category}
                         </Text>
                       </View>
                     )}
                     {task.priority && (
                       <View
-                        className={`px-2 py-1 rounded-full ${
-                          task.priority === "high"
-                            ? "bg-red-100"
-                            : task.priority === "medium"
-                              ? "bg-yellow-100"
-                              : "bg-green-100"
-                        }`}
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 12,
+                          backgroundColor:
+                            task.priority === "high"
+                              ? colors.error + "20"
+                              : task.priority === "medium"
+                                ? colors.warning + "20"
+                                : colors.success + "20",
+                        }}
                       >
                         <Text
-                          className={`text-xs capitalize ${
-                            task.priority === "high"
-                              ? "text-red-800"
-                              : task.priority === "medium"
-                                ? "text-yellow-800"
-                                : "text-green-800"
-                          }`}
+                          style={{
+                            fontSize: 12,
+                            textTransform: "capitalize",
+                            color:
+                              task.priority === "high"
+                                ? colors.error
+                                : task.priority === "medium"
+                                  ? colors.warning
+                                  : colors.success,
+                          }}
                         >
                           {task.priority}
                         </Text>
@@ -469,7 +716,7 @@ const Home = () => {
                 <MaterialIcons
                   name="arrow-forward-ios"
                   size={16}
-                  color="#9CA3AF"
+                  color={colors.textSecondary}
                 />
               </View>
             </TouchableOpacity>
@@ -479,48 +726,52 @@ const Home = () => {
 
       {/* Quick Actions */}
       <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
-        <Text style={{ 
-          fontSize: 20, 
-          fontWeight: 'bold', 
-          color: colors.text, 
-          marginBottom: 16 
-        }}>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: "bold",
+            color: colors.text,
+            marginBottom: 16,
+          }}
+        >
           Quick Actions
         </Text>
 
-        <View style={{ 
-          flexDirection: 'row', 
-          flexWrap: 'wrap', 
-          justifyContent: 'space-between' 
-        }}>
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+          }}
+        >
           <TouchableOpacity
-            style={{ 
-              backgroundColor: colors.primary, 
-              padding: 16, 
-              borderRadius: 12, 
-              width: '48%', 
-              marginBottom: 12 
+            style={{
+              backgroundColor: colors.primary,
+              padding: 16,
+              borderRadius: 12,
+              width: "48%",
+              marginBottom: 12,
             }}
             onPress={() => router.push("/(dashboard)/tasks/new")}
           >
             <MaterialIcons name="add-task" size={28} color="white" />
-            <Text style={{ color: 'white', fontWeight: '600', marginTop: 8 }}>
+            <Text style={{ color: "white", fontWeight: "600", marginTop: 8 }}>
               Add New Task
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={{ 
-              backgroundColor: colors.success, 
-              padding: 16, 
-              borderRadius: 12, 
-              width: '48%', 
-              marginBottom: 12 
+            style={{
+              backgroundColor: colors.success,
+              padding: 16,
+              borderRadius: 12,
+              width: "48%",
+              marginBottom: 12,
             }}
             onPress={() => router.push("/(dashboard)/tasks")}
           >
             <MaterialIcons name="list" size={28} color="white" />
-            <Text style={{ color: 'white', fontWeight: '600', marginTop: 8 }}>
+            <Text style={{ color: "white", fontWeight: "600", marginTop: 8 }}>
               View All Tasks
             </Text>
           </TouchableOpacity>
@@ -528,17 +779,42 @@ const Home = () => {
       </View>
 
       {/* Productivity Tip */}
-      <View className="px-6 py-4">
-        <View className="bg-gradient-to-r from-purple-500 to-blue-500 p-4 rounded-xl">
-          <View className="flex-row items-center mb-2">
+      <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+        <View
+          style={{
+            backgroundColor: colors.primary,
+            padding: 16,
+            borderRadius: 12,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 8,
+            }}
+          >
             <MaterialIcons name="lightbulb" size={24} color="white" />
-            <Text className="text-white font-semibold text-lg ml-2">
+            <Text
+              style={{
+                color: "white",
+                fontWeight: "bold",
+                fontSize: 18,
+                marginLeft: 8,
+              }}
+            >
               💡 Productivity Tip
             </Text>
           </View>
-          <Text className="text-white text-sm leading-5">
+          <Text
+            style={{
+              color: "white",
+              fontSize: 14,
+              lineHeight: 20,
+            }}
+          >
             {completionRate >= 80
-              ? "You&apos;re doing amazing! Consider setting more challenging goals to keep growing."
+              ? "You're doing amazing! Consider setting more challenging goals to keep growing."
               : completionRate >= 60
                 ? "Great progress! Try breaking larger tasks into smaller, manageable steps."
                 : completionRate >= 40
@@ -550,15 +826,39 @@ const Home = () => {
 
       {/* Location-based Tasks Info */}
       {tasksWithLocation > 0 && (
-        <View className="px-6 py-4">
-          <View className="bg-purple-50 border border-purple-200 p-4 rounded-xl">
-            <View className="flex-row items-center mb-2">
-              <MaterialIcons name="location-on" size={24} color="#8B5CF6" />
-              <Text className="ml-2 text-purple-800 font-semibold">
+        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+          <View
+            style={{
+              backgroundColor: colors.accent + "20",
+              borderWidth: 1,
+              borderColor: colors.accent + "30",
+              padding: 16,
+              borderRadius: 12,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <MaterialIcons
+                name="location-on"
+                size={24}
+                color={colors.accent}
+              />
+              <Text
+                style={{
+                  marginLeft: 8,
+                  color: colors.accent,
+                  fontWeight: "bold",
+                }}
+              >
                 Location-Based Tasks
               </Text>
             </View>
-            <Text className="text-purple-700">
+            <Text style={{ color: colors.accent }}>
               You have {tasksWithLocation} task
               {tasksWithLocation !== 1 ? "s" : ""} with location reminders set
               up.
@@ -569,20 +869,60 @@ const Home = () => {
 
       {/* Empty State */}
       {totalTasks === 0 && (
-        <View className="px-6 py-8">
-          <View className="bg-white p-8 rounded-xl shadow-sm items-center">
-            <MaterialIcons name="task-alt" size={64} color="#D1D5DB" />
-            <Text className="text-xl font-semibold text-gray-600 mt-4 mb-2">
+        <View style={{ paddingHorizontal: 24, paddingVertical: 32 }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              padding: 32,
+              borderRadius: 12,
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+            }}
+          >
+            <MaterialIcons
+              name="task-alt"
+              size={64}
+              color={colors.textSecondary}
+            />
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "bold",
+                color: colors.textSecondary,
+                marginTop: 16,
+                marginBottom: 8,
+              }}
+            >
               No tasks yet!
             </Text>
-            <Text className="text-gray-500 text-center mb-6">
+            <Text
+              style={{
+                color: colors.textSecondary,
+                textAlign: "center",
+                marginBottom: 24,
+              }}
+            >
               Start organizing your life by creating your first task.
             </Text>
             <TouchableOpacity
-              className="bg-blue-500 px-6 py-3 rounded-lg"
+              style={{
+                backgroundColor: colors.primary,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 8,
+              }}
               onPress={() => router.push("/(dashboard)/tasks/new")}
             >
-              <Text className="text-white font-semibold">
+              <Text
+                style={{
+                  color: "white",
+                  fontWeight: "bold",
+                }}
+              >
                 Create Your First Task
               </Text>
             </TouchableOpacity>

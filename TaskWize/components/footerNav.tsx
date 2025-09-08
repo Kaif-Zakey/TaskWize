@@ -1,6 +1,7 @@
 import { View, Text, Pressable } from "react-native";
 import React from "react";
 import { useRouter, useSegments } from "expo-router";
+import { useTheme } from "@/context/ThemeContext";
 
 const tabs = [
   { label: "Home", path: "/(dashboard)/home" },
@@ -10,6 +11,7 @@ const tabs = [
 
 const FooterNav = () => {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const segment = useSegments(); // ["(dashboard)", "home"]
   const activeRouter =
@@ -18,21 +20,38 @@ const FooterNav = () => {
       : `/(dashboard)/${segment[0] || "home"}`;
 
   return (
-    <View className="flex-row justify-around border-gray-300 py-2 bg-white">
-      {/* {tabs.map(() => {
-        return <View></View>
-      })} */}
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "space-around",
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        paddingVertical: 8,
+        backgroundColor: colors.surface,
+      }}
+    >
       {tabs.map((data, index) => (
         <Pressable
           key={index}
-          // data.path === activeRouter -> this button is active
-          //   "" + "" -> ` ${can use varibles like any} `
-          className={`py-1 px-4 rounded-lg ${data?.path === activeRouter ? "bg-blue-600" : ""}`}
+          style={{
+            paddingVertical: 4,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            backgroundColor:
+              data?.path === activeRouter ? colors.primary : "transparent",
+          }}
           onPress={() => {
             router.push(data?.path);
           }}
         >
-          <Text className="text-2xl">{data?.label}</Text>
+          <Text
+            style={{
+              fontSize: 18,
+              color: data?.path === activeRouter ? "white" : colors.text,
+            }}
+          >
+            {data?.label}
+          </Text>
         </Pressable>
       ))}
     </View>

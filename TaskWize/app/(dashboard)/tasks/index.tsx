@@ -15,15 +15,18 @@ import {
 } from "@/service/taskService";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Task } from "@/app/types/task";
+import { Task } from "@/types/task";
 import { useLoader } from "@/context/LoaderContext";
 import { useTheme } from "@/context/ThemeContext";
 import { onSnapshot } from "firebase/firestore";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TaskScreen = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const router = useRouter();
   const { showLoader, hideLoader } = useLoader();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const handleFetchData = async () => {
     try {
@@ -94,17 +97,49 @@ const TaskScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className="bg-white p-4 border-b border-gray-200">
-        <Text className="text-3xl font-bold text-gray-800">My Tasks</Text>
-        <Text className="text-sm text-gray-600 mt-1">
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 20,
+          paddingBottom: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 30,
+            fontWeight: "bold",
+            color: colors.text,
+          }}
+        >
+          My Tasks
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            marginTop: 4,
+          }}
+        >
           {tasks.length} task{tasks.length !== 1 ? "s" : ""} total
         </Text>
       </View>
 
       <View className="absolute bottom-5 right-5 z-10">
         <Pressable
-          className="bg-blue-500 rounded-full p-4 shadow-lg"
+          style={{
+            backgroundColor: colors.primary,
+            borderRadius: 30,
+            padding: 16,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+          }}
           onPress={() => {
             router.push("/(dashboard)/tasks/new");
           }}
@@ -116,11 +151,28 @@ const TaskScreen = () => {
       <ScrollView className="flex-1 py-2">
         {tasks.length === 0 ? (
           <View className="flex-1 justify-center items-center py-20">
-            <MaterialIcons name="task-alt" size={64} color="#D1D5DB" />
-            <Text className="text-lg text-gray-500 mb-4 mt-4">
+            <MaterialIcons
+              name="task-alt"
+              size={64}
+              color={colors.textSecondary}
+            />
+            <Text
+              style={{
+                fontSize: 18,
+                color: colors.textSecondary,
+                marginBottom: 16,
+                marginTop: 16,
+              }}
+            >
               No tasks yet
             </Text>
-            <Text className="text-sm text-gray-400">
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.textSecondary,
+                opacity: 0.7,
+              }}
+            >
               Tap the + button to add your first task
             </Text>
           </View>
@@ -129,25 +181,58 @@ const TaskScreen = () => {
             return (
               <View
                 key={task.id}
-                className={`bg-white p-4 mb-3 rounded-lg mx-4 border shadow-sm ${
-                  task.status === "completed"
-                    ? "border-green-200 opacity-75"
-                    : "border-gray-200"
-                }`}
+                style={{
+                  backgroundColor: colors.surface,
+                  padding: 16,
+                  marginBottom: 12,
+                  borderRadius: 8,
+                  marginHorizontal: 16,
+                  borderWidth: 1,
+                  borderColor:
+                    task.status === "completed"
+                      ? colors.success
+                      : colors.border,
+                  opacity: task.status === "completed" ? 0.75 : 1,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 2,
+                  elevation: 2,
+                }}
               >
                 <View className="flex-row justify-between items-start mb-2">
                   <Text
-                    className={`text-lg font-semibold flex-1 ${
-                      task.status === "completed"
-                        ? "line-through text-gray-500"
-                        : "text-gray-800"
-                    }`}
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "bold",
+                      flex: 1,
+                      color:
+                        task.status === "completed"
+                          ? colors.textSecondary
+                          : colors.text,
+                      textDecorationLine:
+                        task.status === "completed" ? "line-through" : "none",
+                    }}
                   >
                     {task.title}
                   </Text>
                   {task.category && (
-                    <View className="bg-blue-100 px-2 py-1 rounded-full ml-2">
-                      <Text className="text-xs text-blue-800 capitalize">
+                    <View
+                      style={{
+                        backgroundColor: colors.primary + "20",
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 12,
+                        marginLeft: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: colors.primary,
+                          textTransform: "capitalize",
+                        }}
+                      >
                         {task.category}
                       </Text>
                     </View>
@@ -156,46 +241,118 @@ const TaskScreen = () => {
 
                 {task.description && (
                   <Text
-                    className="text-sm text-gray-600 mb-3"
+                    style={{
+                      fontSize: 14,
+                      color: colors.textSecondary,
+                      marginBottom: 12,
+                    }}
                     numberOfLines={2}
                   >
                     {task.description}
                   </Text>
                 )}
 
+                {task.location && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginBottom: 12,
+                      backgroundColor: colors.info + "20",
+                      padding: 8,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <MaterialIcons
+                      name="location-on"
+                      size={16}
+                      color={colors.info}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: colors.info,
+                        marginLeft: 4,
+                        flex: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {task.location.address ||
+                        `${task.location.latitude.toFixed(4)}, ${task.location.longitude.toFixed(4)}`}
+                    </Text>
+                  </View>
+                )}
+
                 <View className="flex-row justify-between items-center">
                   <View className="flex-row flex-wrap">
                     <TouchableOpacity
-                      className={`px-3 py-2 rounded-md mr-2 mb-2 ${
-                        task.status === "completed"
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                      }`}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 6,
+                        marginRight: 8,
+                        marginBottom: 8,
+                        backgroundColor:
+                          task.status === "completed"
+                            ? colors.warning
+                            : colors.success,
+                      }}
                       onPress={() => {
                         if (task.id) handleToggleStatus(task.id);
                       }}
                     >
-                      <Text className="text-white text-xs font-medium">
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: "500",
+                        }}
+                      >
                         {task.status === "completed" ? "Undo" : "Done"}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      className="bg-blue-500 px-3 py-2 rounded-md mr-2 mb-2"
+                      style={{
+                        backgroundColor: colors.primary,
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 6,
+                        marginRight: 8,
+                        marginBottom: 8,
+                      }}
                       onPress={() =>
                         router.push(`/(dashboard)/tasks/${task.id}`)
                       }
                     >
-                      <Text className="text-white text-xs font-medium">
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: "500",
+                        }}
+                      >
                         Edit
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      className="bg-red-500 px-3 py-2 rounded-md mb-2"
+                      style={{
+                        backgroundColor: colors.error,
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 6,
+                        marginBottom: 8,
+                      }}
                       onPress={() => {
                         if (task.id) handleDelete(task.id);
                       }}
                     >
-                      <Text className="text-white text-xs font-medium">
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: "500",
+                        }}
+                      >
                         Delete
                       </Text>
                     </TouchableOpacity>

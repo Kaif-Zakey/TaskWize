@@ -9,7 +9,7 @@ import {
   Switch,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Task, Location } from "@/app/types/task";
+import { Task, Location } from "@/types/task";
 import locationService from "@/service/locationService";
 
 interface TaskFormProps {

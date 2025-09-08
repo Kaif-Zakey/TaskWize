@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useTheme } from "@/context/ThemeContext";
 
 interface WeeklyProgressProps {
   completedThisWeek: number;
@@ -11,54 +12,114 @@ const WeeklyProgress: React.FC<WeeklyProgressProps> = ({
   completedThisWeek,
   totalThisWeek,
 }) => {
+  const { colors } = useTheme();
+
   const progressPercentage =
     totalThisWeek > 0 ? (completedThisWeek / totalThisWeek) * 100 : 0;
 
   const getProgressColor = () => {
-    if (progressPercentage >= 80) return "bg-green-500";
-    if (progressPercentage >= 60) return "bg-yellow-500";
-    if (progressPercentage >= 40) return "bg-orange-500";
-    return "bg-red-500";
+    if (progressPercentage >= 80) return colors.success;
+    if (progressPercentage >= 60) return colors.warning;
+    if (progressPercentage >= 40) return "#f97316"; // orange
+    return colors.error;
   };
 
   const getMotivationalMessage = () => {
-    if (progressPercentage >= 90) return "Outstanding! You&apos;re on fire! 🔥";
+    if (progressPercentage >= 90) return "Outstanding! You're on fire! 🔥";
     if (progressPercentage >= 70) return "Great job! Keep it up! 💪";
-    if (progressPercentage >= 50)
-      return "Good progress! You&apos;re doing well! 👍";
+    if (progressPercentage >= 50) return "Good progress! You're doing well! 👍";
     if (progressPercentage >= 25)
-      return "You&apos;re getting there! Stay focused! 🎯";
-    return "Let&apos;s get started! You&apos;ve got this! 🚀";
+      return "You're getting there! Stay focused! 🎯";
+    return "Let's get started! You've got this! 🚀";
   };
 
   return (
-    <View className="bg-white p-4 rounded-xl shadow-sm">
-      <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-lg font-semibold text-gray-800">
+    <View
+      style={{
+        backgroundColor: colors.surface,
+        padding: 16,
+        borderRadius: 12,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: "bold",
+            color: colors.text,
+          }}
+        >
           This Week&apos;s Progress
         </Text>
-        <MaterialIcons name="trending-up" size={24} color="#3B82F6" />
+        <MaterialIcons name="trending-up" size={24} color={colors.primary} />
       </View>
 
-      <View className="mb-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-sm text-gray-600">
+      <View style={{ marginBottom: 12 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.textSecondary,
+            }}
+          >
             {completedThisWeek} of {totalThisWeek} tasks completed
           </Text>
-          <Text className="text-sm font-semibold text-gray-800">
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "bold",
+              color: colors.text,
+            }}
+          >
             {Math.round(progressPercentage)}%
           </Text>
         </View>
 
-        <View className="bg-gray-200 h-3 rounded-full">
+        <View
+          style={{
+            backgroundColor: colors.border,
+            height: 12,
+            borderRadius: 6,
+          }}
+        >
           <View
-            className={`h-3 rounded-full ${getProgressColor()}`}
-            style={{ width: `${progressPercentage}%` }}
+            style={{
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: getProgressColor(),
+              width: `${progressPercentage}%`,
+            }}
           />
         </View>
       </View>
 
-      <Text className="text-sm text-gray-600 text-center italic">
+      <Text
+        style={{
+          fontSize: 14,
+          color: colors.textSecondary,
+          textAlign: "center",
+          fontStyle: "italic",
+        }}
+      >
         {getMotivationalMessage()}
       </Text>
     </View>

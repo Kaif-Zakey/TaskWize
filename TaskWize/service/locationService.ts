@@ -1,6 +1,6 @@
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
-import { Location as TaskLocation } from "@/app/types/task";
+import { Location as TaskLocation } from "@/types/task";
 
 // Configure notifications
 Notifications.setNotificationHandler({
