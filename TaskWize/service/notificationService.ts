@@ -1,0 +1,217 @@
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
+
+// Configure notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+export class NotificationService {
+  /**
+   * Setup notification listeners (call this in your root component)
+   */
+  static setupNotificationListeners() {
+    // Listen for notifications received while app is in foreground
+    const foregroundSubscription =
+      Notifications.addNotificationReceivedListener((notification) => {
+        console.log("Notification received in foreground:", notification);
+      });
+
+    // Listen for notification responses (when user taps notification)
+    const responseSubscription =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("Notification response:", response);
+        const data = response.notification.request.content.data;
+
+        if (data?.type === "task-reminder") {
+          console.log("Task reminder notification tapped:", data.taskTitle);
+          // You can navigate to the task here if needed
+        }
+      });
+
+    return () => {
+      foregroundSubscription.remove();
+      responseSubscription.remove();
+    };
+  }
+
+  /**
+   * Request notification permissions for iOS and Android
+   */
+  static async requestPermissions(): Promise<boolean> {
+    try {
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== "granted") {
+        console.log("Notification permission denied");
+        return false;
+      }
+
+      // For iOS, we need to request additional permissions
+      if (Platform.OS === "ios") {
+        await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+          },
+        });
+      }
+
+      console.log("Notification permissions granted");
+      return true;
+    } catch (error) {
+      console.error("Error requesting notification permissions:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Send immediate notification for testing
+   */
+  static async sendImmediateTaskNotification(
+    taskTitle: string,
+    taskLocation: { latitude: number; longitude: number; address: string },
+    range: number = 100
+  ): Promise<string | null> {
+    try {
+      // First ensure we have permissions
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        throw new Error("Notification permissions not granted");
+      }
+
+      // Send immediate notification
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "📍 Task Location Set",
+          body: `"${taskTitle}" is now set for ${taskLocation.address}. You'll be notified within ${range}m!`,
+          sound: "notification.wav",
+          data: {
+            taskTitle,
+            location: taskLocation,
+            type: "location-setup",
+            range,
+          },
+        },
+        trigger: null, // Immediate
+      });
+
+      console.log("Immediate notification sent:", notificationId);
+      return notificationId;
+    } catch (error) {
+      console.error("Error sending immediate notification:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Schedule a simple notification for a task (since location-based triggers aren't supported in managed Expo)
+   */
+  static async scheduleTaskNotification(
+    taskTitle: string,
+    taskLocation: { latitude: number; longitude: number; address: string },
+    range: number = 100,
+    delayMinutes: number = 1 // For testing, show notification after 1 minute
+  ): Promise<string | null> {
+    try {
+      // First ensure we have permissions
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        throw new Error("Notification permissions not granted");
+      }
+
+      // Schedule notification with time trigger (since location triggers aren't supported)
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "📍 Task Reminder",
+          body: `Don't forget about "${taskTitle}" at ${taskLocation.address}`,
+          sound: "notification.wav", // Custom sound
+          data: {
+            taskTitle,
+            location: taskLocation,
+            type: "task-reminder",
+            range,
+          },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: delayMinutes * 60, // Convert minutes to seconds
+        },
+      });
+
+      console.log("Task notification scheduled:", notificationId);
+      return notificationId;
+    } catch (error) {
+      console.error("Error scheduling task notification:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Cancel a specific notification
+   */
+  static async cancelNotification(notificationId: string): Promise<void> {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(notificationId);
+      console.log("Notification cancelled:", notificationId);
+    } catch (error) {
+      console.error("Error cancelling notification:", error);
+    }
+  }
+
+  /**
+   * Cancel all scheduled notifications
+   */
+  static async cancelAllNotifications(): Promise<void> {
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log("All notifications cancelled");
+    } catch (error) {
+      console.error("Error cancelling all notifications:", error);
+    }
+  }
+
+  /**
+   * Get notification permissions status
+   */
+  static async getPermissionStatus(): Promise<Notifications.NotificationPermissionsStatus> {
+    return await Notifications.getPermissionsAsync();
+  }
+
+  /**
+   * Test notification (for debugging)
+   */
+  static async sendTestNotification(): Promise<void> {
+    try {
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        throw new Error("Notification permissions not granted");
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Test Notification",
+          body: "This is a test notification from TaskWize",
+          sound: "notification.wav",
+        },
+        trigger: null, // Show immediately
+      });
+    } catch (error) {
+      console.error("Error sending test notification:", error);
+    }
+  }
+}

@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Switch,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -14,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import * as Location from "expo-location";
 import { MaterialIcons } from "@expo/vector-icons";
+import { NotificationService } from "@/service/notificationService";
 
 const TaskFormScreen = () => {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -27,6 +29,8 @@ const TaskFormScreen = () => {
     longitude: number;
   } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(false);
+  const [notifyOnLocation, setNotifyOnLocation] = useState<boolean>(false);
+  const [notificationRange, setNotificationRange] = useState<number>(100);
   const router = useRouter();
   const { hideLoader, showLoader } = useLoader();
   const { user } = useAuth();
@@ -42,12 +46,14 @@ const TaskFormScreen = () => {
             setTitle(task.title);
             setDescription(task.description || "");
             setCategory(task.category || "");
+            setNotifyOnLocation(task.notifyOnLocation || false);
             if (task.location) {
               setLocation(task.location.address || "");
               setCurrentLocation({
                 latitude: task.location.latitude,
                 longitude: task.location.longitude,
               });
+              setNotificationRange(task.location.range || 100);
             }
           }
         } finally {
@@ -127,6 +133,7 @@ const TaskFormScreen = () => {
               latitude: currentLocation.latitude,
               longitude: currentLocation.longitude,
               address: location || undefined,
+              range: notificationRange,
             }
           : undefined;
 
@@ -137,7 +144,41 @@ const TaskFormScreen = () => {
           status: "pending",
           category: category || undefined,
           location: taskLocation,
+          notifyOnLocation: notifyOnLocation && currentLocation !== null,
         });
+
+        // Schedule notification if enabled
+        if (notifyOnLocation && currentLocation && taskLocation) {
+          try {
+            // Send immediate confirmation notification
+            await NotificationService.sendImmediateTaskNotification(
+              title,
+              {
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                address: location || "Unknown location",
+              },
+              notificationRange
+            );
+
+            // Also schedule a delayed notification for testing location monitoring
+            await NotificationService.scheduleTaskNotification(
+              title,
+              {
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                address: location || "Unknown location",
+              },
+              notificationRange,
+              0.1 // 6 seconds for immediate testing
+            );
+          } catch (notificationError) {
+            console.error(
+              "Failed to schedule notification:",
+              notificationError
+            );
+          }
+        }
       } else {
         const existingTask = await getTaskById(id!);
         if (existingTask) {
@@ -146,6 +187,7 @@ const TaskFormScreen = () => {
                 latitude: currentLocation.latitude,
                 longitude: currentLocation.longitude,
                 address: location || undefined,
+                range: notificationRange,
               }
             : undefined;
 
@@ -155,7 +197,41 @@ const TaskFormScreen = () => {
             description,
             category: category || undefined,
             location: taskLocation,
+            notifyOnLocation: notifyOnLocation && currentLocation !== null,
           });
+
+          // Schedule notification if enabled
+          if (notifyOnLocation && currentLocation && taskLocation) {
+            try {
+              // Send immediate confirmation notification
+              await NotificationService.sendImmediateTaskNotification(
+                title,
+                {
+                  latitude: currentLocation.latitude,
+                  longitude: currentLocation.longitude,
+                  address: location || "Unknown location",
+                },
+                notificationRange
+              );
+
+              // Also schedule a delayed notification for testing
+              await NotificationService.scheduleTaskNotification(
+                title,
+                {
+                  latitude: currentLocation.latitude,
+                  longitude: currentLocation.longitude,
+                  address: location || "Unknown location",
+                },
+                notificationRange,
+                0.1 // 6 seconds for immediate testing
+              );
+            } catch (notificationError) {
+              console.error(
+                "Failed to schedule notification for updated task:",
+                notificationError
+              );
+            }
+          }
         }
       }
       router.back();
@@ -374,6 +450,126 @@ const TaskFormScreen = () => {
             </View>
           )}
         </View>
+
+        {/* Notification Settings */}
+        {currentLocation && (
+          <View style={{ marginBottom: 16 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "500",
+                  color: colors.text,
+                }}
+              >
+                Location Notifications
+              </Text>
+              <Switch
+                value={notifyOnLocation}
+                onValueChange={setNotifyOnLocation}
+                trackColor={{
+                  false: colors.border,
+                  true: colors.primary + "40",
+                }}
+                thumbColor={
+                  notifyOnLocation ? colors.primary : colors.textSecondary
+                }
+              />
+            </View>
+
+            {notifyOnLocation && (
+              <View>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "500",
+                    marginBottom: 8,
+                    color: colors.text,
+                  }}
+                >
+                  Notification Range: {notificationRange}m
+                </Text>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    marginBottom: 8,
+                  }}
+                >
+                  {[50, 100, 200, 500, 1000].map((range) => (
+                    <TouchableOpacity
+                      key={range}
+                      onPress={() => setNotificationRange(range)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        marginRight: 8,
+                        marginBottom: 8,
+                        borderRadius: 16,
+                        backgroundColor:
+                          notificationRange === range
+                            ? colors.primary
+                            : colors.surface,
+                        borderWidth: 1,
+                        borderColor:
+                          notificationRange === range
+                            ? colors.primary
+                            : colors.border,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color:
+                            notificationRange === range
+                              ? "white"
+                              : colors.textSecondary,
+                          fontSize: 12,
+                        }}
+                      >
+                        {range}m
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View
+                  style={{
+                    backgroundColor: colors.info + "20",
+                    padding: 12,
+                    borderRadius: 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <MaterialIcons
+                    name="notifications"
+                    size={16}
+                    color={colors.info}
+                  />
+                  <Text
+                    style={{
+                      color: colors.info,
+                      fontSize: 12,
+                      marginLeft: 8,
+                      flex: 1,
+                    }}
+                  >
+                    You will be notified when you are within {notificationRange}
+                    m of this location
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
 
         <TouchableOpacity
           style={{
