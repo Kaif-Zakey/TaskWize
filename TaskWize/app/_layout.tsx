@@ -22,15 +22,16 @@ const RootLayout = () => {
       }
     };
 
-    // Initialize location monitoring service
+    // Initialize location monitoring service (only if user is authenticated)
     const setupLocationMonitoring = async () => {
       try {
+        // Note: Location monitoring will check authentication status during initialization
         const initialized = await LocationMonitoringService.initialize();
         if (initialized) {
           console.log("✅ Location monitoring service initialized");
         } else {
           console.log(
-            "⚠️ Location monitoring service could not be initialized"
+            "⚠️ Location monitoring service could not be initialized (user may not be authenticated)"
           );
         }
       } catch (error) {
