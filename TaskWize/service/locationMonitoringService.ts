@@ -61,7 +61,9 @@ class LocationMonitoringService {
   static async initialize() {
     // Check if user is authenticated before initializing
     if (!auth.currentUser) {
-      console.log("👤 User not authenticated, cannot initialize location monitoring");
+      console.log(
+        "👤 User not authenticated, cannot initialize location monitoring"
+      );
       return false;
     }
 
@@ -107,7 +109,9 @@ class LocationMonitoringService {
   static addTaskLocation(taskLocation: TaskLocation) {
     // Check if user is authenticated before adding task location
     if (!auth.currentUser) {
-      console.log("👤 User not authenticated, cannot add task location for monitoring");
+      console.log(
+        "👤 User not authenticated, cannot add task location for monitoring"
+      );
       return;
     }
 
@@ -266,7 +270,9 @@ class LocationMonitoringService {
     try {
       // Check if user is authenticated before starting location monitoring
       if (!auth.currentUser) {
-        console.log("👤 User not authenticated, cannot start location monitoring");
+        console.log(
+          "👤 User not authenticated, cannot start location monitoring"
+        );
         return;
       }
 

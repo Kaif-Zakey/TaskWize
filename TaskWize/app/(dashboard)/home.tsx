@@ -68,6 +68,13 @@ const Home = () => {
           .map((d) => ({ id: d.id, ...d.data() }) as Task)
           .filter((task) => task.userId === authUser?.uid);
 
+        console.log("🔥 Firebase tasks update:", {
+          totalDocs: snapshot.docs.length,
+          userTasks: allTasks.length,
+          userId: authUser?.uid,
+          tasks: allTasks.map(t => ({ id: t.id, title: t.title, status: t.status }))
+        });
+
         setTasks(allTasks);
       },
       (err) => {
@@ -123,6 +130,14 @@ const Home = () => {
 
   const completionRate =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // Debug logging for completion rate
+  console.log("📊 Task Statistics Debug:", {
+    totalTasks,
+    completedTasks,
+    completionRate,
+    tasks: tasks.map(task => ({ id: task.id, title: task.title, status: task.status }))
+  });
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -225,10 +240,11 @@ const Home = () => {
               >
                 <View
                   style={{
-                    backgroundColor: colors.primary,
+                    backgroundColor: completionRate > 0 ? colors.primary : '#E5E7EB',
                     height: 8,
                     borderRadius: 4,
                     width: `${completionRate}%`,
+                    minWidth: completionRate > 0 ? 2 : 0, // Ensure some visibility if there's any progress
                   }}
                 />
               </View>
@@ -238,6 +254,7 @@ const Home = () => {
             style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}
           >
             {completedTasks} of {totalTasks} tasks completed
+            {totalTasks === 0 ? " (No tasks yet)" : ""}
           </Text>
         </View>
       </View>
