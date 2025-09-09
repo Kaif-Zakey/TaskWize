@@ -1,6 +1,7 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import { NotificationService } from "./notificationService";
+import { auth } from "@/firebase";
 
 const LOCATION_TASK_NAME = "background-location-task";
 
@@ -13,19 +14,73 @@ interface TaskLocation {
   address?: string;
 }
 
+// Define the background task at module level with error handling
+TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
+  try {
+    // Check if user is authenticated before processing location updates
+    if (!auth.currentUser) {
+      console.log("👤 User not authenticated, skipping location monitoring");
+      return;
+    }
+
+    if (error) {
+      console.error("❌ Background location task error:", error.message);
+      return;
+    }
+
+    if (data && data.locations) {
+      const { locations } = data;
+      const location = locations[0];
+
+      if (location && location.coords) {
+        console.log("📍 Background location update:", {
+          lat: location.coords.latitude.toFixed(6),
+          lng: location.coords.longitude.toFixed(6),
+        });
+
+        // Call the static method to check proximity
+        await LocationMonitoringService.checkProximityToTasks({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    }
+  } catch (taskError) {
+    console.error("❌ Error in background location task:", taskError);
+  }
+});
+
 class LocationMonitoringService {
   private static trackedTasks: TaskLocation[] = [];
   private static isMonitoring = false;
+  private static isInitialized = false;
 
   /**
    * Initialize the location monitoring service
    */
   static async initialize() {
+    // Check if user is authenticated before initializing
+    if (!auth.currentUser) {
+      console.log("👤 User not authenticated, cannot initialize location monitoring");
+      return false;
+    }
+
+    if (this.isInitialized) {
+      console.log("📱 Location monitoring service already initialized");
+      return true;
+    }
+
     try {
+      // Check if running on a platform that supports background tasks
+      if (!TaskManager) {
+        console.log("TaskManager is not available on this platform");
+        return false;
+      }
+
       // Request location permissions
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        console.log("Location permission not granted");
+        console.log("📍 Location permission not granted");
         return false;
       }
 
@@ -33,14 +88,15 @@ class LocationMonitoringService {
       const backgroundStatus =
         await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus.status !== "granted") {
-        console.log("Background location permission not granted");
+        console.log("🔒 Background location permission not granted");
         return false;
       }
 
-      console.log("Location monitoring service ready");
+      this.isInitialized = true;
+      console.log("✅ Location monitoring service ready");
       return true;
     } catch (error) {
-      console.error("Error initializing location monitoring:", error);
+      console.error("❌ Error initializing location monitoring:", error);
       return false;
     }
   }
@@ -49,6 +105,12 @@ class LocationMonitoringService {
    * Add a task location to monitor
    */
   static addTaskLocation(taskLocation: TaskLocation) {
+    // Check if user is authenticated before adding task location
+    if (!auth.currentUser) {
+      console.log("👤 User not authenticated, cannot add task location for monitoring");
+      return;
+    }
+
     // Remove existing task with same ID if exists
     this.trackedTasks = this.trackedTasks.filter(
       (task) => task.id !== taskLocation.id
@@ -94,7 +156,36 @@ class LocationMonitoringService {
   static clearAllTasks() {
     this.trackedTasks = [];
     this.stopLocationMonitoring();
-    console.log("Cleared all tasks from location monitoring");
+    console.log("🧹 Cleared all tasks from location monitoring");
+  }
+
+  /**
+   * Check if the service is ready to use
+   */
+  static isReady(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
+   * Get service status
+   */
+  static getStatus() {
+    return {
+      initialized: this.isInitialized,
+      monitoring: this.isMonitoring,
+      trackedTasksCount: this.trackedTasks.length,
+      authenticated: !!auth.currentUser,
+    };
+  }
+
+  /**
+   * Handle user logout - stop all location monitoring and clear tasks
+   */
+  static handleUserLogout() {
+    console.log("👤 User logged out, cleaning up location monitoring");
+    this.clearAllTasks();
+    this.isInitialized = false;
+    console.log("🧹 Location monitoring cleaned up after logout");
   }
 
   /**
@@ -123,10 +214,16 @@ class LocationMonitoringService {
   /**
    * Check if user is near any tracked task locations
    */
-  private static async checkProximityToTasks(userLocation: {
+  public static async checkProximityToTasks(userLocation: {
     latitude: number;
     longitude: number;
   }) {
+    // Check if user is authenticated before processing proximity checks
+    if (!auth.currentUser) {
+      console.log("👤 User not authenticated, skipping proximity checks");
+      return;
+    }
+
     for (const task of this.trackedTasks) {
       const distance = this.calculateDistance(
         userLocation.latitude,
@@ -167,6 +264,12 @@ class LocationMonitoringService {
    */
   private static async startLocationMonitoring() {
     try {
+      // Check if user is authenticated before starting location monitoring
+      if (!auth.currentUser) {
+        console.log("👤 User not authenticated, cannot start location monitoring");
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         console.error("Location permission not granted");
@@ -180,32 +283,7 @@ class LocationMonitoringService {
         return;
       }
 
-      // Define the background task
-      TaskManager.defineTask(
-        LOCATION_TASK_NAME,
-        async ({ data, error }: any) => {
-          if (error) {
-            console.error("Background location task error:", error);
-            return;
-          }
-
-          if (data) {
-            const { locations } = data;
-            if (locations && locations.length > 0) {
-              const location = locations[0];
-              console.log("Background location update:", location.coords);
-
-              // Check proximity to tasks
-              await this.checkProximityToTasks({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-              });
-            }
-          }
-        }
-      );
-
-      // Start location updates
+      // Start location updates (task is already defined at module level)
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.Balanced,
         timeInterval: 30000, // Update every 30 seconds
@@ -257,6 +335,12 @@ class LocationMonitoringService {
    */
   static async checkCurrentLocation() {
     try {
+      // Check if user is authenticated before checking location
+      if (!auth.currentUser) {
+        console.log("👤 User not authenticated, cannot check current location");
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         console.error("Location permission not granted");

@@ -25,10 +25,16 @@ const RootLayout = () => {
     // Initialize location monitoring service
     const setupLocationMonitoring = async () => {
       try {
-        await LocationMonitoringService.initialize();
-        console.log("Location monitoring service initialized");
+        const initialized = await LocationMonitoringService.initialize();
+        if (initialized) {
+          console.log("✅ Location monitoring service initialized");
+        } else {
+          console.log(
+            "⚠️ Location monitoring service could not be initialized"
+          );
+        }
       } catch (error) {
-        console.error("Error setting up location monitoring:", error);
+        console.error("❌ Error setting up location monitoring:", error);
       }
     };
 
