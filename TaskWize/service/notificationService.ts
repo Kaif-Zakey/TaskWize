@@ -1,18 +1,45 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+// Helper function to check notification preferences (outside of class to avoid circular reference)
+const areNotificationsEnabledGlobal = async (): Promise<boolean> => {
+  try {
+    const savedPreferences = await AsyncStorage.getItem("appPreferences");
+    if (savedPreferences) {
+      const preferences = JSON.parse(savedPreferences);
+      return preferences.notifications === true;
+    }
+    return true;
+  } catch (error) {
+    console.error("Error checking notification preferences:", error);
+    return true;
+  }
+};
+
 // Configure notification handler
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async () => {
+    // Check if notifications are enabled in user preferences
+    const notificationsEnabled = await areNotificationsEnabledGlobal();
+
+    return {
+      shouldShowAlert: notificationsEnabled,
+      shouldPlaySound: notificationsEnabled,
+      shouldSetBadge: false,
+      shouldShowBanner: notificationsEnabled,
+      shouldShowList: notificationsEnabled,
+    };
+  },
 });
 
 export class NotificationService {
+  /**
+   * Check if user has enabled notifications in app preferences
+   */
+  static async areNotificationsEnabled(): Promise<boolean> {
+    return await areNotificationsEnabledGlobal();
+  }
   /**
    * Setup notification listeners (call this in your root component)
    */
@@ -88,6 +115,15 @@ export class NotificationService {
     range: number = 100
   ): Promise<string | null> {
     try {
+      // Check if notifications are enabled in user preferences
+      const notificationsEnabled = await this.areNotificationsEnabled();
+      if (!notificationsEnabled) {
+        console.log(
+          "🔕 Notifications disabled in settings - skipping immediate notification"
+        );
+        return null;
+      }
+
       // First ensure we have permissions
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
@@ -128,6 +164,15 @@ export class NotificationService {
     delayMinutes: number = 1 // For testing, show notification after 1 minute
   ): Promise<string | null> {
     try {
+      // Check if notifications are enabled in user preferences
+      const notificationsEnabled = await this.areNotificationsEnabled();
+      if (!notificationsEnabled) {
+        console.log(
+          "🔕 Notifications disabled in settings - skipping scheduled notification"
+        );
+        return null;
+      }
+
       // First ensure we have permissions
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
@@ -197,6 +242,15 @@ export class NotificationService {
    */
   static async sendTestNotification(): Promise<void> {
     try {
+      // Check if notifications are enabled in user preferences
+      const notificationsEnabled = await this.areNotificationsEnabled();
+      if (!notificationsEnabled) {
+        console.log(
+          "🔕 Notifications disabled in settings - skipping test notification"
+        );
+        return;
+      }
+
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
         throw new Error("Notification permissions not granted");

@@ -1,58 +1,60 @@
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
-import { useEffect, useState } from "react";
-import {
-  deleteTask,
-  getAllTask,
-  tasksRef,
-  toggleTaskStatus,
-} from "@/service/taskService";
-import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { Task } from "@/types/task";
+import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
 import { useTheme } from "@/context/ThemeContext";
+import { deleteTask, tasksRef, toggleTaskStatus } from "@/service/taskService";
+import { Task } from "@/types/task";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { onSnapshot } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TaskScreen = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const router = useRouter();
   const { showLoader, hideLoader } = useLoader();
   const { colors } = useTheme();
+  const { user: authUser } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const handleFetchData = async () => {
-    try {
-      showLoader();
-      // const data = await getTasks() // returns array axios get
-      const data = await getAllTask(); // firebase get all
-      console.log(data);
-      setTasks(data);
-    } catch (error) {
-      console.log("Error fetching:", error);
-    } finally {
-      hideLoader();
-    }
-  };
-
-  // useEffect(() => {
-  //   handleFetchData()
-  // }, [segment])
+  // Real-time listener handles data fetching, so no manual fetch needed
 
   useEffect(() => {
+    if (!authUser?.uid) {
+      setTasks([]);
+      return;
+    }
+
     const unsubscribe = onSnapshot(
       tasksRef,
       (snapshot) => {
-        const allTasks = snapshot.docs.map(
-          (d) => ({ id: d.id, ...d.data() }) as Task
-        );
+        const allTasks = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }) as Task)
+          .filter((task) => task.userId === authUser?.uid);
+
+        console.log("📋 Task List Update:", {
+          totalDocs: snapshot.docs.length,
+          userTasks: allTasks.length,
+          userId: authUser?.uid,
+          tasks: allTasks.map((t) => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            userId: t.userId,
+          })),
+        });
+
         setTasks(allTasks);
         hideLoader();
       },
@@ -62,7 +64,7 @@ const TaskScreen = () => {
     );
 
     return () => unsubscribe();
-  }, [hideLoader]);
+  }, [hideLoader, authUser?.uid]);
 
   const handleToggleStatus = async (taskId: string) => {
     try {
@@ -77,23 +79,49 @@ const TaskScreen = () => {
   };
 
   const handleDelete = async (id: string) => {
-    Alert.alert("Delete", "Are you sure want to delete ?", [
-      { text: "Cancel" },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            showLoader();
-            await deleteTask(id);
-            handleFetchData();
-          } catch (err) {
-            console.log("Error deleting task", err);
-          } finally {
-            hideLoader();
-          }
-        },
-      },
-    ]);
+    console.log("🎯 handleDelete called with ID:", id);
+    console.log("👤 Current user:", authUser?.uid);
+
+    if (!authUser?.uid) {
+      console.error("❌ User not authenticated");
+      Alert.alert("Error", "You must be logged in to delete tasks.");
+      return;
+    }
+
+    console.log("📱 Showing custom delete confirmation modal");
+    setTaskToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!taskToDelete || !authUser?.uid) return;
+
+    try {
+      showLoader();
+      console.log(
+        "🗑️ Deleting task with ID:",
+        taskToDelete,
+        "for user:",
+        authUser.uid
+      );
+      await deleteTask(taskToDelete, authUser.uid);
+      console.log("✅ Task deleted successfully");
+      setShowDeleteModal(false);
+      setTaskToDelete(null);
+    } catch (err) {
+      console.error("❌ Error deleting task:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete task";
+      Alert.alert("Error", errorMessage + " Please try again.");
+    } finally {
+      hideLoader();
+    }
+  };
+
+  const cancelDelete = () => {
+    console.log("❌ Delete cancelled");
+    setShowDeleteModal(false);
+    setTaskToDelete(null);
   };
 
   return (
@@ -124,246 +152,431 @@ const TaskScreen = () => {
             marginTop: 4,
           }}
         >
-          {tasks.length} task{tasks.length !== 1 ? "s" : ""} total
+          {!authUser
+            ? "Please login to view your tasks"
+            : `${tasks.length} task${tasks.length !== 1 ? "s" : ""} total`}
         </Text>
       </View>
 
-      <View className="absolute bottom-5 right-5 z-10">
-        <Pressable
+      {!authUser ? (
+        <View
           style={{
-            backgroundColor: colors.primary,
-            borderRadius: 30,
-            padding: 16,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            elevation: 5,
-          }}
-          onPress={() => {
-            router.push("/(dashboard)/tasks/new");
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 32,
           }}
         >
-          <MaterialIcons name="add" size={28} color="#fff" />
-        </Pressable>
-      </View>
-
-      <ScrollView className="flex-1 py-2">
-        {tasks.length === 0 ? (
-          <View className="flex-1 justify-center items-center py-20">
-            <MaterialIcons
-              name="task-alt"
-              size={64}
-              color={colors.textSecondary}
-            />
+          <MaterialIcons name="login" size={64} color={colors.textSecondary} />
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "bold",
+              color: colors.text,
+              marginTop: 16,
+              marginBottom: 8,
+              textAlign: "center",
+            }}
+          >
+            Authentication Required
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.textSecondary,
+              textAlign: "center",
+              lineHeight: 20,
+              marginBottom: 24,
+            }}
+          >
+            Please login or register to access your tasks
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: colors.primary,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 25,
+            }}
+            onPress={() => router.push("/(auth)/login")}
+          >
             <Text
               style={{
-                fontSize: 18,
-                color: colors.textSecondary,
-                marginBottom: 16,
-                marginTop: 16,
+                color: "white",
+                fontWeight: "600",
+                fontSize: 16,
               }}
             >
-              No tasks yet
+              Go to Login
             </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                color: colors.textSecondary,
-                opacity: 0.7,
-              }}
-            >
-              Tap the + button to add your first task
-            </Text>
-          </View>
-        ) : (
-          tasks.map((task) => {
-            return (
-              <View
-                key={task.id}
-                style={{
-                  backgroundColor: colors.surface,
-                  padding: 16,
-                  marginBottom: 12,
-                  borderRadius: 8,
-                  marginHorizontal: 16,
-                  borderWidth: 1,
-                  borderColor:
-                    task.status === "completed"
-                      ? colors.success
-                      : colors.border,
-                  opacity: task.status === "completed" ? 0.75 : 1,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 2,
-                  elevation: 2,
-                }}
-              >
-                <View className="flex-row justify-between items-start mb-2">
-                  <Text
-                    style={{
-                      fontSize: 18,
-                      fontWeight: "bold",
-                      flex: 1,
-                      color:
-                        task.status === "completed"
-                          ? colors.textSecondary
-                          : colors.text,
-                      textDecorationLine:
-                        task.status === "completed" ? "line-through" : "none",
-                    }}
-                  >
-                    {task.title}
-                  </Text>
-                  {task.category && (
-                    <View
-                      style={{
-                        backgroundColor: colors.primary + "20",
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 12,
-                        marginLeft: 8,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: colors.primary,
-                          textTransform: "capitalize",
-                        }}
-                      >
-                        {task.category}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {task.description && (
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: colors.textSecondary,
-                      marginBottom: 12,
-                    }}
-                    numberOfLines={2}
-                  >
-                    {task.description}
-                  </Text>
-                )}
-
-                {task.location && (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 12,
-                      backgroundColor: colors.info + "20",
-                      padding: 8,
-                      borderRadius: 6,
-                    }}
-                  >
-                    <MaterialIcons
-                      name="location-on"
-                      size={16}
-                      color={colors.info}
-                    />
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: colors.info,
-                        marginLeft: 4,
-                        flex: 1,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {task.location.address ||
-                        `${task.location.latitude.toFixed(4)}, ${task.location.longitude.toFixed(4)}`}
-                    </Text>
-                  </View>
-                )}
-
-                <View className="flex-row justify-between items-center">
-                  <View className="flex-row flex-wrap">
-                    <TouchableOpacity
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 6,
-                        marginRight: 8,
-                        marginBottom: 8,
-                        backgroundColor:
-                          task.status === "completed"
-                            ? colors.warning
-                            : colors.success,
-                      }}
-                      onPress={() => {
-                        if (task.id) handleToggleStatus(task.id);
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: "500",
-                        }}
-                      >
-                        {task.status === "completed" ? "Undo" : "Done"}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: colors.primary,
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 6,
-                        marginRight: 8,
-                        marginBottom: 8,
-                      }}
-                      onPress={() =>
-                        router.push(`/(dashboard)/tasks/${task.id}`)
-                      }
-                    >
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: "500",
-                        }}
-                      >
-                        Edit
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: colors.error,
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 6,
-                        marginBottom: 8,
-                      }}
-                      onPress={() => {
-                        if (task.id) handleDelete(task.id);
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: "500",
-                        }}
-                      >
-                        Delete
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          <ScrollView className="flex-1 py-2">
+            {tasks.length === 0 ? (
+              <View className="flex-1 justify-center items-center py-20">
+                <MaterialIcons
+                  name="task-alt"
+                  size={64}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={{
+                    fontSize: 18,
+                    color: colors.textSecondary,
+                    marginBottom: 16,
+                    marginTop: 16,
+                  }}
+                >
+                  No tasks yet
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                    opacity: 0.7,
+                  }}
+                >
+                  Tap the + button to add your first task
+                </Text>
               </View>
-            );
-          })
-        )}
-        <View className="h-20" />
-      </ScrollView>
+            ) : (
+              tasks.map((task) => {
+                console.log("🎯 Rendering task:", task.id, task.title);
+                return (
+                  <View
+                    key={task.id}
+                    style={{
+                      backgroundColor: colors.surface,
+                      padding: 16,
+                      marginBottom: 12,
+                      borderRadius: 8,
+                      marginHorizontal: 16,
+                      borderWidth: 1,
+                      borderColor:
+                        task.status === "completed"
+                          ? colors.success
+                          : colors.border,
+                      opacity: task.status === "completed" ? 0.75 : 1,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 2,
+                      elevation: 2,
+                    }}
+                  >
+                    <View className="flex-row justify-between items-start mb-2">
+                      <Text
+                        style={{
+                          fontSize: 18,
+                          fontWeight: "bold",
+                          flex: 1,
+                          color:
+                            task.status === "completed"
+                              ? colors.textSecondary
+                              : colors.text,
+                          textDecorationLine:
+                            task.status === "completed"
+                              ? "line-through"
+                              : "none",
+                        }}
+                      >
+                        {task.title}
+                      </Text>
+                      {task.category && (
+                        <View
+                          style={{
+                            backgroundColor: colors.primary + "20",
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 12,
+                            marginLeft: 8,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: colors.primary,
+                              textTransform: "capitalize",
+                            }}
+                          >
+                            {task.category}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {task.description && (
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: colors.textSecondary,
+                          marginBottom: 12,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {task.description}
+                      </Text>
+                    )}
+
+                    {task.location && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginBottom: 12,
+                          backgroundColor: colors.info + "20",
+                          padding: 8,
+                          borderRadius: 6,
+                        }}
+                      >
+                        <MaterialIcons
+                          name="location-on"
+                          size={16}
+                          color={colors.info}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: colors.info,
+                            marginLeft: 4,
+                            flex: 1,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {task.location.address ||
+                            `${task.location.latitude.toFixed(4)}, ${task.location.longitude.toFixed(4)}`}
+                        </Text>
+                      </View>
+                    )}
+
+                    <View className="flex-row justify-between items-center">
+                      <View className="flex-row flex-wrap">
+                        <TouchableOpacity
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 6,
+                            marginRight: 8,
+                            marginBottom: 8,
+                            backgroundColor:
+                              task.status === "completed"
+                                ? colors.warning
+                                : colors.success,
+                          }}
+                          onPress={() => {
+                            if (task.id) handleToggleStatus(task.id);
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#fff",
+                              fontSize: 12,
+                              fontWeight: "500",
+                            }}
+                          >
+                            {task.status === "completed" ? "Undo" : "Done"}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: colors.primary,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 6,
+                            marginRight: 8,
+                            marginBottom: 8,
+                          }}
+                          onPress={() =>
+                            router.push(`/(dashboard)/tasks/${task.id}`)
+                          }
+                        >
+                          <Text
+                            style={{
+                              color: "#fff",
+                              fontSize: 12,
+                              fontWeight: "500",
+                            }}
+                          >
+                            Edit
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: colors.error,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 6,
+                            marginBottom: 8,
+                          }}
+                          onPress={() => {
+                            console.log(
+                              "🔥 Delete button pressed for task:",
+                              task.id
+                            );
+                            console.log("📋 Task object:", task);
+                            if (task.id) {
+                              console.log(
+                                "✅ Task ID exists, calling handleDelete"
+                              );
+                              handleDelete(task.id);
+                            } else {
+                              console.error("❌ Task ID is missing!");
+                              Alert.alert(
+                                "Error",
+                                "Cannot delete task: ID is missing"
+                              );
+                            }
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#fff",
+                              fontSize: 12,
+                              fontWeight: "500",
+                            }}
+                          >
+                            Delete
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+            <View className="h-20" />
+          </ScrollView>
+        </>
+      )}
+
+      {/* Add Task Button */}
+      {authUser && (
+        <View className="absolute bottom-5 right-5 z-10">
+          <Pressable
+            style={{
+              backgroundColor: colors.primary,
+              borderRadius: 30,
+              padding: 16,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+            onPress={() => router.push("/(dashboard)/tasks/new")}
+          >
+            <MaterialIcons name="add" size={28} color="white" />
+          </Pressable>
+        </View>
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelDelete}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              padding: 24,
+              margin: 20,
+              minWidth: 300,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "bold",
+                color: colors.text,
+                marginBottom: 12,
+                textAlign: "center",
+              }}
+            >
+              Delete Task
+            </Text>
+            <Text
+              style={{
+                fontSize: 16,
+                color: colors.textSecondary,
+                marginBottom: 24,
+                textAlign: "center",
+                lineHeight: 22,
+              }}
+            >
+              Are you sure you want to delete this task? This action cannot be
+              undone.
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.border,
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  borderRadius: 8,
+                  alignItems: "center",
+                }}
+                onPress={cancelDelete}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: colors.text,
+                  }}
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.error,
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  borderRadius: 8,
+                  alignItems: "center",
+                }}
+                onPress={confirmDelete}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: "#fff",
+                  }}
+                >
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

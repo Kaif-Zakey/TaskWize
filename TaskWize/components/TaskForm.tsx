@@ -1,16 +1,16 @@
+import locationService from "@/service/locationService";
+import { Location, Task } from "@/types/task";
+import { MaterialIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
+  Alert,
   Pressable,
   ScrollView,
-  Alert,
   Switch,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import { Task, Location } from "@/types/task";
-import locationService from "@/service/locationService";
 
 interface TaskFormProps {
   task?: Task;
@@ -111,13 +111,25 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
     const taskData: Omit<Task, "id"> = {
       title: title.trim(),
       description: description.trim(),
-      category: category || undefined,
       priority,
       status: task?.status || "pending",
-      dueDate: dueDate || undefined,
-      location: location || undefined,
-      notifyOnLocation: location ? notifyOnLocation : false,
     };
+
+    // Only add optional fields if they have values
+    if (category) {
+      taskData.category = category;
+    }
+
+    if (dueDate) {
+      taskData.dueDate = dueDate;
+    }
+
+    if (location) {
+      taskData.location = location;
+      taskData.notifyOnLocation = notifyOnLocation;
+    } else {
+      taskData.notifyOnLocation = false;
+    }
 
     onSave(taskData);
   };

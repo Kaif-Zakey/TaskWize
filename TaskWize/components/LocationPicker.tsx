@@ -1,17 +1,41 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  Alert,
-  StyleSheet,
-  TextInput,
-} from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
-
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+// Platform-specific map components
+let AppleMaps: any = null;
+let GoogleMaps: any = null;
+
+// Initialize map components on non-web platforms
+const initializeMaps = () => {
+  if (Platform.OS !== "web") {
+    try {
+      const ExpoMaps = eval("require")("expo-maps");
+      return {
+        AppleMaps: ExpoMaps.AppleMaps,
+        GoogleMaps: ExpoMaps.GoogleMaps,
+      };
+    } catch (error) {
+      console.warn("expo-maps not available:", error);
+      return { AppleMaps: null, GoogleMaps: null };
+    }
+  }
+  return { AppleMaps: null, GoogleMaps: null };
+};
+
+const { AppleMaps: Apple, GoogleMaps: Google } = initializeMaps();
+AppleMaps = Apple;
+GoogleMaps = Google;
 
 interface LocationData {
   latitude: number;
@@ -51,6 +75,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
@@ -151,7 +176,16 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   };
 
   const handleMapPress = async (event: any) => {
-    const coordinate = event.nativeEvent.coordinate;
+    let coordinate;
+
+    // Handle different event structures for iOS vs Android
+    if (Platform.OS === "ios" && event.coordinates) {
+      coordinate = event.coordinates;
+    } else if (event.nativeEvent && event.nativeEvent.coordinate) {
+      coordinate = event.nativeEvent.coordinate;
+    } else {
+      return;
+    }
 
     try {
       // Reverse geocode to get address
@@ -173,6 +207,11 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
       };
 
       setSelectedLocation(locationData);
+      setRegion((prevRegion) => ({
+        ...prevRegion,
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude,
+      }));
     } catch (error) {
       console.error("Error reverse geocoding:", error);
       const locationData: LocationData = {
@@ -265,25 +304,149 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 
         {/* Map */}
         <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            region={region}
-            onPress={handleMapPress}
-            showsUserLocation={true}
-            showsMyLocationButton={false}
-          >
-            {selectedLocation && (
-              <Marker
-                coordinate={{
-                  latitude: selectedLocation.latitude,
-                  longitude: selectedLocation.longitude,
-                }}
-                title={selectedLocation.name}
-                description={selectedLocation.address}
+          {Platform.OS === "web" ? (
+            // Web fallback
+            <View
+              style={[
+                styles.map,
+                {
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: "#f0f0f0",
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <MaterialIcons
+                name="map"
+                size={48}
+                color={colors.textSecondary}
               />
-            )}
-          </MapView>
+              <Text
+                style={{
+                  color: colors.text,
+                  marginTop: 8,
+                  textAlign: "center",
+                  paddingHorizontal: 20,
+                }}
+              >
+                Map view is available on mobile devices
+              </Text>
+              {selectedLocation && (
+                <View style={{ marginTop: 16, alignItems: "center" }}>
+                  <Text style={{ color: colors.text, fontWeight: "bold" }}>
+                    Selected Location:
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
+                    {selectedLocation.latitude.toFixed(6)},{" "}
+                    {selectedLocation.longitude.toFixed(6)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : Platform.OS === "ios" && AppleMaps ? (
+            // iOS with AppleMaps
+            <AppleMaps.View
+              style={styles.map}
+              cameraPosition={{
+                coordinates: {
+                  latitude: region.latitude,
+                  longitude: region.longitude,
+                },
+                zoom: 15,
+              }}
+              onMapClick={handleMapPress}
+              properties={{
+                isMyLocationEnabled: true,
+              }}
+              markers={
+                selectedLocation
+                  ? [
+                      {
+                        coordinates: {
+                          latitude: selectedLocation.latitude,
+                          longitude: selectedLocation.longitude,
+                        },
+                        title: selectedLocation.name,
+                      },
+                    ]
+                  : []
+              }
+            />
+          ) : Platform.OS === "android" && GoogleMaps ? (
+            // Android with GoogleMaps
+            <GoogleMaps.View
+              style={styles.map}
+              cameraPosition={{
+                coordinates: {
+                  latitude: region.latitude,
+                  longitude: region.longitude,
+                },
+                zoom: 15,
+              }}
+              onMapClick={handleMapPress}
+              properties={{
+                isMyLocationEnabled: true,
+              }}
+              markers={
+                selectedLocation
+                  ? [
+                      {
+                        coordinates: {
+                          latitude: selectedLocation.latitude,
+                          longitude: selectedLocation.longitude,
+                        },
+                        title: selectedLocation.name,
+                      },
+                    ]
+                  : []
+              }
+            />
+          ) : (
+            // Fallback for when expo-maps is not available
+            <View
+              style={[
+                styles.map,
+                {
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: "#f0f0f0",
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <MaterialIcons
+                name="map"
+                size={48}
+                color={colors.textSecondary}
+              />
+              <Text
+                style={{
+                  color: colors.text,
+                  marginTop: 8,
+                  textAlign: "center",
+                  paddingHorizontal: 20,
+                }}
+              >
+                Map functionality requires a development build
+              </Text>
+              {selectedLocation && (
+                <View style={{ marginTop: 16, alignItems: "center" }}>
+                  <Text style={{ color: colors.text, fontWeight: "bold" }}>
+                    Selected Location:
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
+                    {selectedLocation.latitude.toFixed(6)},{" "}
+                    {selectedLocation.longitude.toFixed(6)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Selected Location Info */}

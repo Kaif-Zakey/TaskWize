@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { createTask, getTaskById, updateTask } from "@/service/taskService";
+import { createTask, getTaskById, updateTask, getDefaultTaskCategory } from "@/service/taskService";
 import { useLoader } from "@/context/LoaderContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -67,6 +67,15 @@ const TaskFormScreen = () => {
           }
         } finally {
           hideLoader();
+        }
+      } else if (isNew) {
+        // For new tasks, load the default category from preferences
+        try {
+          const defaultCategory = await getDefaultTaskCategory();
+          setCategory(defaultCategory);
+        } catch (error) {
+          console.error("Error loading default category:", error);
+          setCategory("Work"); // Fallback
         }
       }
     };

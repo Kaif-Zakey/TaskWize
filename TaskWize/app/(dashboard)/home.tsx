@@ -1,14 +1,14 @@
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
-import React, { useEffect, useState } from "react";
-import { useRouter, useFocusEffect } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
-import { onSnapshot } from "firebase/firestore";
-import { tasksRef } from "@/service/taskService";
-import { Task } from "@/types/task";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { tasksRef } from "@/service/taskService";
+import { Task } from "@/types/task";
+import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { onSnapshot } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Home = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -72,7 +72,11 @@ const Home = () => {
           totalDocs: snapshot.docs.length,
           userTasks: allTasks.length,
           userId: authUser?.uid,
-          tasks: allTasks.map(t => ({ id: t.id, title: t.title, status: t.status }))
+          tasks: allTasks.map((t) => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+          })),
         });
 
         setTasks(allTasks);
@@ -135,8 +139,15 @@ const Home = () => {
   console.log("📊 Task Statistics Debug:", {
     totalTasks,
     completedTasks,
+    pendingTasks,
     completionRate,
-    tasks: tasks.map(task => ({ id: task.id, title: task.title, status: task.status }))
+    userId: authUser?.uid,
+    tasks: tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      userId: task.userId,
+    })),
   });
 
   return (
@@ -226,9 +237,13 @@ const Home = () => {
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text
-              style={{ color: colors.text, fontSize: 30, fontWeight: "bold" }}
+              style={{
+                color: totalTasks === 0 ? colors.textSecondary : colors.text,
+                fontSize: 30,
+                fontWeight: "bold",
+              }}
             >
-              {completionRate}%
+              {totalTasks === 0 ? "0" : completionRate}%
             </Text>
             <View style={{ marginLeft: 12, flex: 1 }}>
               <View
@@ -236,15 +251,25 @@ const Home = () => {
                   backgroundColor: colors.border,
                   height: 8,
                   borderRadius: 4,
+                  overflow: "hidden",
                 }}
               >
                 <View
                   style={{
-                    backgroundColor: completionRate > 0 ? colors.primary : '#E5E7EB',
+                    backgroundColor:
+                      totalTasks === 0
+                        ? colors.border
+                        : completionRate >= 75
+                          ? colors.success || "#10B981"
+                          : completionRate >= 50
+                            ? colors.warning || "#F59E0B"
+                            : completionRate >= 25
+                              ? "#F97316" // orange
+                              : colors.error || "#EF4444",
                     height: 8,
                     borderRadius: 4,
-                    width: `${completionRate}%`,
-                    minWidth: completionRate > 0 ? 2 : 0, // Ensure some visibility if there's any progress
+                    width: totalTasks === 0 ? "0%" : `${completionRate}%`,
+                    minWidth: completionRate > 0 ? 8 : 0,
                   }}
                 />
               </View>
@@ -253,9 +278,35 @@ const Home = () => {
           <Text
             style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}
           >
-            {completedTasks} of {totalTasks} tasks completed
-            {totalTasks === 0 ? " (No tasks yet)" : ""}
+            {totalTasks === 0
+              ? "No tasks yet - Create your first task to get started!"
+              : `${completedTasks} of ${totalTasks} tasks completed`}
           </Text>
+          {totalTasks > 0 && (
+            <Text
+              style={{
+                color:
+                  completionRate >= 75
+                    ? colors.success || "#10B981"
+                    : completionRate >= 50
+                      ? colors.warning || "#F59E0B"
+                      : colors.textSecondary,
+                fontSize: 11,
+                marginTop: 4,
+                fontStyle: "italic",
+              }}
+            >
+              {completionRate >= 90
+                ? "🎉 Excellent progress!"
+                : completionRate >= 75
+                  ? "💪 Great job!"
+                  : completionRate >= 50
+                    ? "👍 Good progress!"
+                    : completionRate >= 25
+                      ? "🎯 Keep going!"
+                      : "🚀 Just getting started!"}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -460,6 +511,73 @@ const Home = () => {
           </View>
         </View>
       </View>
+
+      {/* No Tasks - Create First Task */}
+      {totalTasks === 0 && (
+        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              padding: 24,
+              borderRadius: 16,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+              alignItems: "center",
+            }}
+          >
+            <MaterialIcons name="add-task" size={48} color={colors.primary} />
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                color: colors.text,
+                marginTop: 16,
+                marginBottom: 8,
+                textAlign: "center",
+              }}
+            >
+              Ready to get productive?
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.textSecondary,
+                marginBottom: 20,
+                textAlign: "center",
+                lineHeight: 20,
+              }}
+            >
+              Create your first task and start tracking your progress!
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: colors.primary,
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 25,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+              onPress={() => router.push("/(dashboard)/tasks")}
+            >
+              <MaterialIcons name="add" size={20} color="white" />
+              <Text
+                style={{
+                  color: "white",
+                  fontWeight: "600",
+                  fontSize: 16,
+                  marginLeft: 8,
+                }}
+              >
+                Create First Task
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Categories Breakdown */}
       {Object.keys(tasksByCategory).length > 0 && (

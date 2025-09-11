@@ -1,4 +1,5 @@
-import api from "./config/api";
+import { db } from "@/firebase";
+import { Task } from "@/types/task";
 import {
   addDoc,
   collection,
@@ -10,12 +11,27 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { db } from "@/firebase";
-import { Task } from "@/types/task";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "./config/api";
 import LocationMonitoringService from "./locationMonitoringService";
 
 // tasks
 export const tasksRef = collection(db, "tasks");
+
+// Utility function to get default category from preferences
+export const getDefaultTaskCategory = async (): Promise<string> => {
+  try {
+    const savedPreferences = await AsyncStorage.getItem("appPreferences");
+    if (savedPreferences) {
+      const preferences = JSON.parse(savedPreferences);
+      return preferences.defaultTaskCategory || "Work";
+    }
+    return "Work"; // Default fallback
+  } catch (error) {
+    console.error("Error loading default task category:", error);
+    return "Work"; // Default fallback
+  }
+};
 
 export const getAllTaskByUserId = async (userId: string) => {
   const q = query(tasksRef, where("userId", "==", userId));
@@ -29,13 +45,28 @@ export const getAllTaskByUserId = async (userId: string) => {
 };
 
 export const createTask = async (task: Task) => {
+  // If no category is provided, use the default category from preferences
+  let finalCategory = task.category;
+  if (!finalCategory || finalCategory.trim() === "") {
+    finalCategory = await getDefaultTaskCategory();
+  }
+
   const taskWithTimestamps = {
     ...task,
+    category: finalCategory,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     status: task.status || "pending",
   };
-  const docRef = await addDoc(tasksRef, taskWithTimestamps);
+
+  // Remove undefined values to prevent Firebase errors
+  const cleanedTask = Object.fromEntries(
+    Object.entries(taskWithTimestamps).filter(
+      ([_, value]) => value !== undefined
+    )
+  );
+
+  const docRef = await addDoc(tasksRef, cleanedTask);
   return docRef.id;
 };
 
@@ -58,13 +89,51 @@ export const getTaskById = async (id: string) => {
     : null;
 };
 
-export const deleteTask = async (id: string) => {
-  const taskDocRef = doc(db, "tasks", id);
+export const deleteTask = async (id: string, userId?: string) => {
+  try {
+    console.log("🗑️ Starting task deletion for ID:", id);
 
-  // Remove from location monitoring if it exists
-  LocationMonitoringService.removeTaskLocation(id);
+    if (!id) {
+      throw new Error("Task ID is required for deletion");
+    }
 
-  return deleteDoc(taskDocRef);
+    const taskDocRef = doc(db, "tasks", id);
+
+    // Check if task exists and verify ownership
+    const taskSnapshot = await getDoc(taskDocRef);
+    if (!taskSnapshot.exists()) {
+      console.warn("⚠️ Task not found for deletion:", id);
+      throw new Error("Task not found");
+    }
+
+    const taskData = taskSnapshot.data();
+
+    // Verify user ownership if userId is provided
+    if (userId && taskData.userId !== userId) {
+      console.warn("⚠️ User not authorized to delete this task:", id);
+      throw new Error("Not authorized to delete this task");
+    }
+
+    // Remove from location monitoring if it exists
+    try {
+      LocationMonitoringService.removeTaskLocation(id);
+    } catch (locationError) {
+      console.warn(
+        "⚠️ Failed to remove from location monitoring:",
+        locationError
+      );
+      // Don't fail the deletion if location monitoring removal fails
+    }
+
+    // Delete the task
+    await deleteDoc(taskDocRef);
+    console.log("✅ Task deleted successfully:", id);
+
+    return { success: true, id };
+  } catch (error) {
+    console.error("❌ Error in deleteTask:", error);
+    throw error;
+  }
 };
 
 export const updateTask = async (id: string, task: Task) => {
@@ -75,12 +144,19 @@ export const updateTask = async (id: string, task: Task) => {
     updatedAt: new Date().toISOString(),
   };
 
+  // Remove undefined values to prevent Firebase errors
+  const cleanedTask = Object.fromEntries(
+    Object.entries(taskWithTimestamp).filter(
+      ([_, value]) => value !== undefined
+    )
+  );
+
   // If task is completed, remove from location monitoring
   if (taskData.status === "completed") {
     LocationMonitoringService.removeTaskLocation(id);
   }
 
-  return updateDoc(taskDocRef, taskWithTimestamp);
+  return updateDoc(taskDocRef, cleanedTask);
 };
 
 export const getTasks = async () => {
