@@ -1,17 +1,7 @@
+import { Location as TaskLocation } from "@/types/task";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
-import { Location as TaskLocation } from "@/types/task";
-
-// Configure notifications
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+import { NotificationService } from "./notificationService";
 
 export class LocationService {
   private static instance: LocationService;
@@ -246,13 +236,25 @@ export class LocationService {
     location: TaskLocation;
   }): Promise<void> {
     try {
+      // Check if sound effects are enabled
+      const soundEffectsEnabled =
+        await NotificationService.areSoundEffectsEnabled();
+
+      // Prepare notification content
+      const notificationContent: any = {
+        title: "TaskWize Reminder",
+        body: `You're near: ${task.title}`,
+        subtitle: task.location.name || task.location.address,
+        data: { taskId: task.id },
+      };
+
+      // Add sound only if sound effects are enabled
+      if (soundEffectsEnabled) {
+        notificationContent.sound = "notification.wav";
+      }
+
       await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "TaskWize Reminder",
-          body: `You're near: ${task.title}`,
-          subtitle: task.location.name || task.location.address,
-          data: { taskId: task.id },
-        },
+        content: notificationContent,
         trigger: null, // Send immediately
       });
     } catch (error) {

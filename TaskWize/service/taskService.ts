@@ -1,5 +1,6 @@
 import { db } from "@/firebase";
 import { Task } from "@/types/task";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   addDoc,
   collection,
@@ -11,7 +12,6 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "./config/api";
 import LocationMonitoringService from "./locationMonitoringService";
 
@@ -24,12 +24,24 @@ export const getDefaultTaskCategory = async (): Promise<string> => {
     const savedPreferences = await AsyncStorage.getItem("appPreferences");
     if (savedPreferences) {
       const preferences = JSON.parse(savedPreferences);
-      return preferences.defaultTaskCategory || "Work";
+      const defaultCategory = preferences.defaultTaskCategory || "Work";
+
+      // Convert display names to lowercase values used in TaskForm
+      const categoryMap: { [key: string]: string } = {
+        Work: "work",
+        Personal: "personal",
+        Shopping: "shopping",
+        Health: "health",
+        Education: "education",
+        Finance: "finance",
+      };
+
+      return categoryMap[defaultCategory] || "work";
     }
-    return "Work"; // Default fallback
+    return "work"; // Default fallback
   } catch (error) {
     console.error("Error loading default task category:", error);
-    return "Work"; // Default fallback
+    return "work"; // Default fallback
   }
 };
 

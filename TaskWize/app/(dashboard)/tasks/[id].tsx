@@ -1,23 +1,28 @@
+import LocationPicker from "@/components/LocationPicker";
+import { useAuth } from "@/context/AuthContext";
+import { useLoader } from "@/context/LoaderContext";
+import { useTheme } from "@/context/ThemeContext";
+import LocationMonitoringService from "@/service/locationMonitoringService";
+import { NotificationService } from "@/service/notificationService";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  createTask,
+  getDefaultTaskCategory,
+  getTaskById,
+  updateTask,
+} from "@/service/taskService";
+import { MaterialIcons } from "@expo/vector-icons";
+import * as Location from "expo-location";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
   Alert,
   ScrollView,
   Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { createTask, getTaskById, updateTask, getDefaultTaskCategory } from "@/service/taskService";
-import { useLoader } from "@/context/LoaderContext";
-import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
-import * as Location from "expo-location";
-import { MaterialIcons } from "@expo/vector-icons";
-import { NotificationService } from "@/service/notificationService";
-import LocationMonitoringService from "@/service/locationMonitoringService";
-import LocationPicker from "@/components/LocationPicker";
 
 const TaskFormScreen = () => {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -25,6 +30,7 @@ const TaskFormScreen = () => {
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [category, setCategory] = useState<string>("");
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [location, setLocation] = useState<string>("");
   const [currentLocation, setCurrentLocation] = useState<{
     latitude: number;
@@ -55,6 +61,7 @@ const TaskFormScreen = () => {
             setTitle(task.title);
             setDescription(task.description || "");
             setCategory(task.category || "");
+            setPriority(task.priority || "medium");
             setNotifyOnLocation(task.notifyOnLocation || false);
             if (task.location) {
               setLocation(task.location.address || "");
@@ -188,6 +195,7 @@ const TaskFormScreen = () => {
           userId: user?.uid,
           status: "pending",
           category: category || undefined,
+          priority,
           location: taskLocation,
           notifyOnLocation: notifyOnLocation && currentLocation !== null,
         });
@@ -243,6 +251,7 @@ const TaskFormScreen = () => {
             title,
             description,
             category: category || undefined,
+            priority,
             location: taskLocation,
             notifyOnLocation: notifyOnLocation && currentLocation !== null,
           });
@@ -295,6 +304,12 @@ const TaskFormScreen = () => {
     { label: "Personal", value: "personal" },
     { label: "Shopping", value: "shopping" },
     { label: "Health", value: "health" },
+  ];
+
+  const priorities = [
+    { label: "Low", value: "low", color: colors.success || "#10B981" },
+    { label: "Medium", value: "medium", color: colors.warning || "#F59E0B" },
+    { label: "High", value: "high", color: colors.error || "#EF4444" },
   ];
 
   return (
@@ -412,6 +427,53 @@ const TaskFormScreen = () => {
                   }}
                 >
                   {cat.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "500",
+              marginBottom: 8,
+              color: colors.text,
+            }}
+          >
+            Priority
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              marginBottom: 16,
+            }}
+          >
+            {priorities.map((pri) => (
+              <TouchableOpacity
+                key={pri.value}
+                onPress={() =>
+                  setPriority(pri.value as "low" | "medium" | "high")
+                }
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  marginRight: pri.value !== "high" ? 8 : 0,
+                  borderRadius: 8,
+                  backgroundColor:
+                    priority === pri.value ? pri.color : colors.surface,
+                  borderWidth: 1,
+                  borderColor:
+                    priority === pri.value ? pri.color : colors.border,
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    color: priority === pri.value ? "#FFFFFF" : colors.text,
+                    fontWeight: priority === pri.value ? "600" : "400",
+                  }}
+                >
+                  {pri.label}
                 </Text>
               </TouchableOpacity>
             ))}

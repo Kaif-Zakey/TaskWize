@@ -14,6 +14,7 @@ import {
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Animated,
   Modal,
   ScrollView,
   Switch,
@@ -60,6 +61,40 @@ const SettingsScreen = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const dropdownAnimation = useState(new Animated.Value(0))[0];
+
+  // Category options with icons
+  const categoryOptions = [
+    { label: "Work", value: "Work", icon: "work" },
+    { label: "Personal", value: "Personal", icon: "person" },
+    { label: "Shopping", value: "Shopping", icon: "shopping-cart" },
+    { label: "Health", value: "Health", icon: "health-and-safety" },
+    { label: "Education", value: "Education", icon: "school" },
+    { label: "Finance", value: "Finance", icon: "account-balance" },
+  ];
+
+  const toggleCategoryDropdown = () => {
+    const toValue = showCategoryDropdown ? 0 : 1;
+    setShowCategoryDropdown(!showCategoryDropdown);
+
+    Animated.timing(dropdownAnimation, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const closeCategoryDropdown = () => {
+    if (showCategoryDropdown) {
+      setShowCategoryDropdown(false);
+      Animated.timing(dropdownAnimation, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
 
   useEffect(() => {
     loadPreferences();
@@ -147,6 +182,16 @@ const SettingsScreen = () => {
     // Handle dark mode specially
     if (key === "darkMode") {
       toggleDarkMode();
+    }
+
+    // Handle sound effects specially - play preview sound when enabled
+    if (key === "soundEffects" && value === true) {
+      try {
+        // Play a preview sound directly without notification
+        await NotificationService.playDirectSound();
+      } catch (error) {
+        console.error("Error playing preview sound:", error);
+      }
     }
 
     // Save the preference
@@ -415,7 +460,7 @@ const SettingsScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView style={{ flex: 1 }}>
+      <ScrollView style={{ flex: 1 }} onScrollBeginDrag={closeCategoryDropdown}>
         {/* Header */}
         <View
           style={{
@@ -533,36 +578,126 @@ const SettingsScreen = () => {
             icon="category"
             title="Default Task Category"
             subtitle={`Currently: ${preferences.defaultTaskCategory}`}
-            onPress={() => {
-              Alert.alert(
-                "Default Category",
-                "Choose your default task category",
-                [
-                  {
-                    text: "Work",
-                    onPress: () =>
-                      updatePreference("defaultTaskCategory", "Work"),
-                  },
-                  {
-                    text: "Personal",
-                    onPress: () =>
-                      updatePreference("defaultTaskCategory", "Personal"),
-                  },
-                  {
-                    text: "Shopping",
-                    onPress: () =>
-                      updatePreference("defaultTaskCategory", "Shopping"),
-                  },
-                  {
-                    text: "Health",
-                    onPress: () =>
-                      updatePreference("defaultTaskCategory", "Health"),
-                  },
-                  { text: "Cancel", style: "cancel" },
-                ]
-              );
-            }}
+            onPress={toggleCategoryDropdown}
+            rightComponent={
+              <MaterialIcons
+                name={
+                  showCategoryDropdown
+                    ? "keyboard-arrow-up"
+                    : "keyboard-arrow-down"
+                }
+                size={24}
+                color={colors.textSecondary}
+              />
+            }
           />
+
+          {/* Category Dropdown with Animation */}
+          <Animated.View
+            style={{
+              height: dropdownAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, categoryOptions.length * 60],
+              }),
+              opacity: dropdownAnimation,
+              overflow: "hidden",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                marginHorizontal: 24,
+                marginTop: 8,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 3,
+                overflow: "hidden",
+              }}
+            >
+              {categoryOptions.map((category, index) => (
+                <TouchableOpacity
+                  key={category.value}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 16,
+                    borderBottomWidth:
+                      index < categoryOptions.length - 1 ? 1 : 0,
+                    borderBottomColor: colors.border,
+                    backgroundColor:
+                      preferences.defaultTaskCategory === category.value
+                        ? `${colors.primary}15`
+                        : "transparent",
+                  }}
+                  onPress={() => {
+                    updatePreference("defaultTaskCategory", category.value);
+                    toggleCategoryDropdown();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor:
+                        preferences.defaultTaskCategory === category.value
+                          ? `${colors.primary}20`
+                          : `${colors.textSecondary}10`,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <MaterialIcons
+                      name={category.icon as any}
+                      size={20}
+                      color={
+                        preferences.defaultTaskCategory === category.value
+                          ? colors.primary
+                          : colors.textSecondary
+                      }
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      marginLeft: 12,
+                      fontSize: 16,
+                      color:
+                        preferences.defaultTaskCategory === category.value
+                          ? colors.primary
+                          : colors.text,
+                      fontWeight:
+                        preferences.defaultTaskCategory === category.value
+                          ? "600"
+                          : "400",
+                      flex: 1,
+                    }}
+                  >
+                    {category.label}
+                  </Text>
+                  {preferences.defaultTaskCategory === category.value && (
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: colors.primary,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <MaterialIcons name="check" size={16} color="white" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
         </View>
 
         {/* Account Section */}
