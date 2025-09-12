@@ -9,7 +9,7 @@
       "@/context/*": ["./context/*"],
       "@/service/*": ["./service/*"],
       "@/types/*": ["./types/*"],
-      "@/firebase": ["./firebase.ts", "./firebase"]
+      "@/firebase": ["./firebase.ts"]
     }
   },
   "include": [
