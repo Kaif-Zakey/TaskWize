@@ -1,7 +1,8 @@
 {
   "name": "taskwize",
-  "main": "expo-router/entry",
   "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -16,7 +17,6 @@
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
     "axios": "^1.11.0",
-    "eslint-config-expo": "~9.2.0",
     "expo": "~53.0.22",
     "expo-av": "~15.1.7",
     "expo-blur": "~14.1.5",
@@ -67,13 +67,5 @@
   },
   "overrides": {
     "@react-native-async-storage/async-storage": "2.1.2"
-  },
-  "expo": {
-    "install": {
-      "exclude": [
-        "eslint-config-expo"
-      ]
-    }
-  },
-  "private": true
+  }
 }
