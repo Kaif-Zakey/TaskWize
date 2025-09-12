@@ -64,7 +64,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/Icon.png",
           "color": "#ffffff",
           "sounds": [
             "./assets/sound/notification.wav"
@@ -89,6 +89,7 @@
       "eas": {
         "projectId": "3542cf8a-f6cc-4734-9bc6-df1713c4be98"
       }
-    }
+    },
+    "owner": "kaifzakey"
   }
 }
