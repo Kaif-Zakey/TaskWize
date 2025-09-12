@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
 import { useTheme } from "@/context/ThemeContext";
 import { deleteTask, tasksRef, toggleTaskStatus } from "@/service/taskService";
-import { Task } from "@/types/task";
+import Task from "@/src/types/task";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { onSnapshot } from "firebase/firestore";

@@ -1,12 +1,6 @@
-export interface Location {
-  latitude: number;
-  longitude: number;
-  address?: string;
-  name?: string; // e.g., "Supermarket", "Office"
-  range?: number; // notification range in meters
-}
+import Location from "./location";
 
-export interface Task {
+interface Task {
   id?: string; // ? - optional
   title: string;
   description: string;
@@ -21,3 +15,5 @@ export interface Task {
   notifyOnLocation?: boolean; // Whether to notify when near location
   tags?: string[];
 }
+
+export default Task;

@@ -1,5 +1,6 @@
 import locationService from "@/service/locationService";
-import { Location, Task } from "@/types/task";
+import Location from "@/src/types/location";
+import Task from "@/src/types/task";
 import { MaterialIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {

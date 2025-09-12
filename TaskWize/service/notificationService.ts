@@ -238,6 +238,7 @@ export class NotificationService {
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: notificationContent,
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: delayMinutes * 60, // Convert minutes to seconds
         },
       });

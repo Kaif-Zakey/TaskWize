@@ -1,5 +1,5 @@
 import { db } from "@/firebase";
-import { Task } from "@/types/task";
+import Task from "@/src/types/task";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   addDoc,
@@ -12,7 +12,6 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import api from "./config/api";
 import LocationMonitoringService from "./locationMonitoringService";
 
 // tasks
@@ -169,19 +168,6 @@ export const updateTask = async (id: string, task: Task) => {
   }
 
   return updateDoc(taskDocRef, cleanedTask);
-};
-
-export const getTasks = async () => {
-  const response = await api.get("/tasks");
-  return response.data;
-};
-
-export const addTask = async (task: {
-  title: string;
-  description?: string;
-}) => {
-  const res = await api.post("/tasks", task);
-  return res.data;
 };
 
 // New helper functions for TaskWize features

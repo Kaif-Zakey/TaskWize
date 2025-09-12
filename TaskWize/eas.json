@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 16.18.1",
+    "version": ">= 16.19.0",
     "appVersionSource": "remote"
   },
   "build": {
@@ -14,10 +14,6 @@
     "production": {
       "android": {
         "buildType": "apk"
-      },
-      "autoIncrement": true,
-      "env": {
-        "NODE_ENV": "production"
       }
     }
   },

@@ -315,10 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.3)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.25,
-    shadowRadius: 25,
+    boxShadow: "0px 20px 25px rgba(0, 0, 0, 0.25)",
     elevation: 20,
   },
   logoContainer: {
@@ -357,10 +354,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1.5,
     borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.05)",
     elevation: 2,
   },
   inputIcon: {

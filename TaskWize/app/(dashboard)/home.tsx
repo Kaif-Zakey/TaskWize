@@ -1,7 +1,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { tasksRef } from "@/service/taskService";
-import { Task } from "@/types/task";
+import Task from "@/src/types/task";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -218,10 +218,7 @@ const Home = () => {
             backgroundColor: colors.surface,
             padding: 16,
             borderRadius: 16,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 2,
+            boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
             elevation: 2,
           }}
         >
@@ -337,10 +334,7 @@ const Home = () => {
               borderRadius: 12,
               width: "48%",
               marginBottom: 12,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.1,
-              shadowRadius: 2,
+              boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
               elevation: 2,
             }}
           >
@@ -423,10 +417,7 @@ const Home = () => {
               borderRadius: 12,
               width: "48%",
               marginBottom: 12,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.1,
-              shadowRadius: 2,
+              boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
               elevation: 2,
             }}
           >
@@ -470,10 +461,7 @@ const Home = () => {
               borderRadius: 12,
               width: "48%",
               marginBottom: 12,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.1,
-              shadowRadius: 2,
+              boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
               elevation: 2,
             }}
           >

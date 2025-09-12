@@ -1,7 +1,7 @@
-import React from "react";
-import { View, Text, Pressable, Alert } from "react-native";
+import Task from "@/src/types/task";
 import { MaterialIcons } from "@expo/vector-icons";
-import { Task } from "@/types/task";
+import React from "react";
+import { Alert, Pressable, Text, View } from "react-native";
 
 interface TaskCardProps {
   task: Task;

@@ -1,4 +1,4 @@
-import { Location as TaskLocation } from "@/types/task";
+import TaskLocation from "@/src/types/location";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { NotificationService } from "./notificationService";

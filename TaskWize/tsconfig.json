@@ -2,14 +2,10 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@/components/*": ["./components/*"],
-      "@/context/*": ["./context/*"],
-      "@/service/*": ["./service/*"],
-      "@/types/*": ["./types/*"],
-      "@/firebase": ["./firebase.ts"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
