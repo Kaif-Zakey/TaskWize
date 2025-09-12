@@ -1,9 +1,9 @@
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import {
-  UserProfile as FirestoreUserProfile,
-  loadUserProfile,
-  saveUserProfile,
+    UserProfile as FirestoreUserProfile,
+    loadUserProfile,
+    saveUserProfile,
 } from "@/service/userProfileService";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,14 +12,14 @@ import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  Image,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 // Use the Firestore UserProfile interface
@@ -249,33 +249,38 @@ const ProfileScreen = () => {
           base64: false,
         });
 
-        console.log("📷 Photo captured:", photo.uri);
+        if (photo) {
+          console.log("📷 Photo captured:", photo.uri);
 
-        // Try to save to media library (optional)
-        try {
-          console.log("💾 Attempting to save to gallery...");
-          const mediaPermission = await MediaLibrary.getPermissionsAsync();
+          // Try to save to media library (optional)
+          try {
+            console.log("💾 Attempting to save to gallery...");
+            const mediaPermission = await MediaLibrary.getPermissionsAsync();
 
-          if (mediaPermission.granted) {
-            const asset = await MediaLibrary.saveToLibraryAsync(photo.uri);
-            console.log("📸 Photo saved to gallery:", asset);
-          } else {
-            console.log(
-              "⚠️ Media library permission not granted, skipping gallery save"
-            );
+            if (mediaPermission.granted) {
+              const asset = await MediaLibrary.saveToLibraryAsync(photo.uri);
+              console.log("📸 Photo saved to gallery:", asset);
+            } else {
+              console.log(
+                "⚠️ Media library permission not granted, skipping gallery save"
+              );
+            }
+          } catch (mediaError) {
+            console.warn("⚠️ Failed to save to gallery:", mediaError);
+            // Continue anyway, don't block profile update
           }
-        } catch (mediaError) {
-          console.warn("⚠️ Failed to save to gallery:", mediaError);
-          // Continue anyway, don't block profile update
+
+          // Update profile with new image
+          console.log("🔄 Updating profile with new image...");
+          const newProfile = { ...profile, profileImage: photo.uri };
+          await saveProfile(newProfile);
+
+          setShowCamera(false);
+          Alert.alert("Success", "Photo captured and saved to profile!");
+        } else {
+          console.error("❌ Failed to capture photo");
+          Alert.alert("Error", "Failed to capture photo. Please try again.");
         }
-
-        // Update profile with new image
-        console.log("🔄 Updating profile with new image...");
-        const newProfile = { ...profile, profileImage: photo.uri };
-        await saveProfile(newProfile);
-
-        setShowCamera(false);
-        Alert.alert("Success", "Photo captured and saved to profile!");
       } catch (error) {
         console.error("❌ Error taking picture:", error);
         Alert.alert("Error", "Failed to capture photo. Please try again.");
