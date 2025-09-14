@@ -58,9 +58,20 @@ const TaskCard: React.FC<TaskCardProps> = ({
   return (
     <Pressable
       onPress={onPress}
-      className={`p-4 m-2 rounded-lg border-l-4 ${getPriorityColor(task.priority)} ${
+      className={`p-4 m-2 rounded-xl border-l-4 ${getPriorityColor(task.priority)} ${
         task.status === "completed" ? "opacity-60" : ""
       }`}
+      style={{
+        backgroundColor: "white",
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 3,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 4.84,
+        elevation: 6,
+      }}
     >
       <View className="flex-row justify-between items-start">
         <View className="flex-1">

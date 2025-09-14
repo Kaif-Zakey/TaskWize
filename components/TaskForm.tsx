@@ -1,3 +1,4 @@
+import { usePreferences } from "@/context/PreferencesContext";
 import locationService from "@/service/locationService";
 import Location from "@/src/types/location";
 import Task from "@/src/types/task";
@@ -35,6 +36,7 @@ const priorities = [
 ];
 
 const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
+  const { isLocationServicesEnabled } = usePreferences();
   const [title, setTitle] = useState(task?.title || "");
   const [description, setDescription] = useState(task?.description || "");
   const [category, setCategory] = useState(task?.category || "");
@@ -125,10 +127,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
       taskData.dueDate = dueDate;
     }
 
-    if (location) {
+    // Only include location data if location services are enabled
+    if (isLocationServicesEnabled && location) {
       taskData.location = location;
       taskData.notifyOnLocation = notifyOnLocation;
     } else {
+      // Clear location data if location services are disabled
+      taskData.location = undefined;
       taskData.notifyOnLocation = false;
     }
 
@@ -246,68 +251,72 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
         />
       </View>
 
-      {/* Location Section */}
-      <View className="mb-4">
-        <Text className="text-lg font-semibold mb-2 text-gray-700">
-          Location
-        </Text>
-
-        <View className="flex-row mb-2">
-          <TextInput
-            value={locationInput}
-            onChangeText={setLocationInput}
-            placeholder="Enter address or location name"
-            className="flex-1 border border-gray-300 rounded-lg p-3 text-base mr-2"
-          />
-          <Pressable
-            onPress={handleSearchLocation}
-            disabled={isLoadingLocation}
-            className="bg-blue-500 rounded-lg px-4 py-3 justify-center"
-          >
-            <MaterialIcons name="search" size={20} color="white" />
-          </Pressable>
-        </View>
-
-        <Pressable
-          onPress={handleGetCurrentLocation}
-          disabled={isLoadingLocation}
-          className="flex-row items-center justify-center bg-gray-100 rounded-lg p-3 mb-2"
-        >
-          <MaterialIcons name="my-location" size={20} color="#6B7280" />
-          <Text className="ml-2 text-gray-600">
-            {isLoadingLocation ? "Getting location..." : "Use Current Location"}
+      {/* Location Section - Only show if location services are enabled */}
+      {isLocationServicesEnabled && (
+        <View className="mb-4">
+          <Text className="text-lg font-semibold mb-2 text-gray-700">
+            Location
           </Text>
-        </Pressable>
 
-        {location && (
-          <View className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
-            <View className="flex-row items-center">
-              <MaterialIcons name="location-on" size={20} color="#10B981" />
-              <Text className="ml-2 text-green-700 font-medium">
-                Location Set
+          <View className="flex-row mb-2">
+            <TextInput
+              value={locationInput}
+              onChangeText={setLocationInput}
+              placeholder="Enter address or location name"
+              className="flex-1 border border-gray-300 rounded-lg p-3 text-base mr-2"
+            />
+            <Pressable
+              onPress={handleSearchLocation}
+              disabled={isLoadingLocation}
+              className="bg-blue-500 rounded-lg px-4 py-3 justify-center"
+            >
+              <MaterialIcons name="search" size={20} color="white" />
+            </Pressable>
+          </View>
+
+          <Pressable
+            onPress={handleGetCurrentLocation}
+            disabled={isLoadingLocation}
+            className="flex-row items-center justify-center bg-gray-100 rounded-lg p-3 mb-2"
+          >
+            <MaterialIcons name="my-location" size={20} color="#6B7280" />
+            <Text className="ml-2 text-gray-600">
+              {isLoadingLocation
+                ? "Getting location..."
+                : "Use Current Location"}
+            </Text>
+          </Pressable>
+
+          {location && (
+            <View className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+              <View className="flex-row items-center">
+                <MaterialIcons name="location-on" size={20} color="#10B981" />
+                <Text className="ml-2 text-green-700 font-medium">
+                  Location Set
+                </Text>
+              </View>
+              <Text className="text-sm text-green-600 mt-1">
+                {location.address ||
+                  `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`}
               </Text>
             </View>
-            <Text className="text-sm text-green-600 mt-1">
-              {location.address ||
-                `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`}
-            </Text>
-          </View>
-        )}
+          )}
 
-        {location && (
-          <View className="flex-row items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <Text className="text-blue-700">
-              Notify when near this location
-            </Text>
-            <Switch
-              value={notifyOnLocation}
-              onValueChange={setNotifyOnLocation}
-              trackColor={{ false: "#D1D5DB", true: "#3B82F6" }}
-              thumbColor={notifyOnLocation ? "#ffffff" : "#f4f3f4"}
-            />
-          </View>
-        )}
-      </View>
+          {location && (
+            <View className="flex-row items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <Text className="text-blue-700">
+                Notify when near this location
+              </Text>
+              <Switch
+                value={notifyOnLocation}
+                onValueChange={setNotifyOnLocation}
+                trackColor={{ false: "#D1D5DB", true: "#3B82F6" }}
+                thumbColor={notifyOnLocation ? "#ffffff" : "#f4f3f4"}
+              />
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Action Buttons */}
       <View className="flex-row space-x-3 mt-6">

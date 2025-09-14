@@ -124,7 +124,6 @@ const Home = () => {
   const completionRate =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  // Debug logging for completion rate
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
@@ -136,6 +135,14 @@ const Home = () => {
           paddingBottom: 32,
           borderBottomLeftRadius: 24,
           borderBottomRightRadius: 24,
+          shadowColor: "#000",
+          shadowOffset: {
+            width: 0,
+            height: 4,
+          },
+          shadowOpacity: 0.3,
+          shadowRadius: 6,
+          elevation: 8,
         }}
       >
         <View
@@ -143,17 +150,39 @@ const Home = () => {
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 16,
+            marginBottom: 20,
           }}
         >
           <View>
-            <Text style={{ color: "white", fontSize: 23, fontWeight: "bold" }}>
+            <Text
+              style={{
+                color: "rgba(255, 255, 255, 0.9)",
+                fontSize: 16,
+                fontWeight: "400",
+                marginBottom: 4,
+              }}
+            >
+              Welcome back,
+            </Text>
+            <Text
+              style={{
+                color: "white",
+                fontSize: 24,
+                fontWeight: "bold",
+                marginBottom: 4,
+              }}
+            >
               {user?.email
                 ? user.email
                     .split("@")[0]
                     .replace(/[0-9]/g, "")
                     .replace(/\./g, "")
                     .replace(/_/g, "")
+                    .split("")
+                    .map((char: string, index: number) =>
+                      index === 0 ? char.toUpperCase() : char
+                    )
+                    .join("")
                 : "User"}
             </Text>
           </View>
@@ -162,10 +191,20 @@ const Home = () => {
               backgroundColor: "rgba(255, 255, 255, 0.2)",
               padding: profileImage ? 2 : 12,
               borderRadius: 50,
-              width: 48,
-              height: 48,
+              width: 50,
+              height: 50,
               justifyContent: "center",
               alignItems: "center",
+              borderWidth: 2,
+              borderColor: "rgba(255, 255, 255, 0.3)",
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: 2,
+              },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
             }}
             onPress={() => router.push("/(dashboard)/profile")}
           >
@@ -173,9 +212,9 @@ const Home = () => {
               <Image
                 source={{ uri: profileImage }}
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
+                  width: 46,
+                  height: 46,
+                  borderRadius: 23,
                 }}
                 resizeMode="cover"
               />

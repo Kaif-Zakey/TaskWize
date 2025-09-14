@@ -1,8 +1,11 @@
 import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
+import { AppPreferences, usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
 import { auth } from "@/firebase";
+import LocationMonitoringService from "@/service/locationMonitoringService";
 import { NotificationService } from "@/service/notificationService";
+import { deleteTask, getAllTaskByUserId } from "@/service/taskService";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -11,10 +14,11 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from "firebase/auth";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   Animated,
+  Linking,
   Modal,
   ScrollView,
   Switch,
@@ -24,36 +28,12 @@ import {
   View,
 } from "react-native";
 
-interface AppPreferences {
-  notifications: boolean;
-  locationServices: boolean;
-  darkMode: boolean;
-  soundEffects: boolean;
-  taskReminders: boolean;
-  weeklyReports: boolean;
-  priorityAlerts: boolean;
-  defaultTaskCategory: string;
-  reminderTime: string;
-}
-
 const SettingsScreen = () => {
   const { user, logout } = useAuth();
-  const { isDarkMode, toggleDarkMode, colors } = useTheme();
+  const { toggleDarkMode, colors } = useTheme();
   const { showLoader, hideLoader } = useLoader();
+  const { preferences, updatePreference } = usePreferences();
   const router = useRouter();
-
-  // App Preferences State
-  const [preferences, setPreferences] = useState<AppPreferences>({
-    notifications: true,
-    locationServices: true,
-    darkMode: false,
-    soundEffects: true,
-    taskReminders: true,
-    weeklyReports: false,
-    priorityAlerts: true,
-    defaultTaskCategory: "Work",
-    reminderTime: "09:00",
-  });
 
   // Account Settings State
   const [isEditingPassword, setIsEditingPassword] = useState(false);
@@ -62,6 +42,9 @@ const SettingsScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackSubject, setFeedbackSubject] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
   const dropdownAnimation = useState(new Animated.Value(0))[0];
 
   // Category options with icons
@@ -96,47 +79,11 @@ const SettingsScreen = () => {
     }
   };
 
-  useEffect(() => {
-    loadPreferences();
-  }, [user]);
-
-  useEffect(() => {
-    // Sync the theme context with preferences
-    setPreferences((prev) => ({
-      ...prev,
-      darkMode: isDarkMode,
-    }));
-  }, [isDarkMode]);
-
-  const loadPreferences = async () => {
-    try {
-      const savedPreferences = await AsyncStorage.getItem("appPreferences");
-      if (savedPreferences) {
-        const parsed = JSON.parse(savedPreferences);
-        // Remove defaultPriority if it exists in saved preferences (cleanup)
-        const { defaultPriority, ...cleanedPreferences } = parsed;
-        setPreferences(cleanedPreferences);
-      }
-    } catch (error) {
-      console.error("Error loading preferences:", error);
-    }
-  };
-
-  const savePreferences = async (newPreferences: AppPreferences) => {
-    try {
-      await AsyncStorage.setItem(
-        "appPreferences",
-        JSON.stringify(newPreferences)
-      );
-      setPreferences(newPreferences);
-    } catch (error) {
-      console.error("Error saving preferences:", error);
-    }
-  };
-
-  const updatePreference = async (key: keyof AppPreferences, value: any) => {
-    const newPreferences = { ...preferences, [key]: value };
-
+  // Custom updatePreference function that handles special cases
+  const updatePreferenceWithSpecialHandling = async (
+    key: keyof AppPreferences,
+    value: any
+  ) => {
     // Handle notifications specially
     if (key === "notifications") {
       try {
@@ -194,8 +141,8 @@ const SettingsScreen = () => {
       }
     }
 
-    // Save the preference
-    savePreferences(newPreferences);
+    // Save the preference using context
+    await updatePreference(key, value);
   };
 
   const reauthenticateUser = async (password: string): Promise<boolean> => {
@@ -320,28 +267,192 @@ const SettingsScreen = () => {
     }
   };
 
+  // Test location monitoring system
+  const testLocationMonitoring = async () => {
+    try {
+      showLoader();
+
+      // Initialize location monitoring
+      const initialized = await LocationMonitoringService.initialize();
+
+      if (!initialized) {
+        Alert.alert(
+          "Location Monitoring Test",
+          "Failed to initialize location monitoring. Please check permissions."
+        );
+        return;
+      }
+
+      // Get service status
+      const status = LocationMonitoringService.getStatus();
+
+      // Create a test task location (at user's current location or default)
+      const testTaskLocation = {
+        id: "test-task-" + Date.now(),
+        title: "Test Location Reminder",
+        latitude: 37.7749, // San Francisco as example
+        longitude: -122.4194,
+        range: 100, // 100 meters
+        address: "Test Location",
+        status: "pending" as const, // Test with pending status
+      };
+
+      // Add test task for monitoring
+      LocationMonitoringService.addTaskLocation(testTaskLocation);
+
+      // Get tracked tasks
+      const trackedTasks = LocationMonitoringService.getTrackedTasks();
+
+      Alert.alert(
+        "Location Monitoring Test Results",
+        `Service Status:
+• Initialized: ${status.initialized ? "✅" : "❌"}
+• Monitoring: ${status.monitoring ? "✅" : "❌"}
+• Authenticated: ${status.authenticated ? "✅" : "❌"}
+• Tracked Tasks: ${trackedTasks.length}
+
+Test task added with 100m range. The system will notify you when you approach the test location.
+
+To remove test task, toggle Location Services off and on.`,
+        [
+          {
+            text: "OK",
+            onPress: () => console.log("Location monitoring test completed"),
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Location monitoring test error:", error);
+      Alert.alert(
+        "Test Error",
+        "Failed to test location monitoring: " + (error as Error).message
+      );
+    } finally {
+      hideLoader();
+    }
+  };
+
   const clearAppData = () => {
     Alert.alert(
       "Clear App Data",
-      "This will reset all app preferences and clear local data. This action cannot be undone.",
+      "This will reset all app preferences, clear local data, AND DELETE ALL YOUR TASKS from Firebase. This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Clear Data",
+          text: "Clear All Data",
           style: "destructive",
           onPress: async () => {
             try {
+              showLoader();
+
+              // First, delete all user tasks from Firebase
+              if (user?.uid) {
+                console.log("🗑️ Deleting all user tasks from Firebase...");
+                const userTasks = await getAllTaskByUserId(user.uid);
+                console.log(`Found ${userTasks.length} tasks to delete`);
+
+                // Delete each task
+                for (const task of userTasks) {
+                  if (task.id) {
+                    try {
+                      await deleteTask(task.id, user.uid);
+                      console.log(`✅ Deleted task: ${task.title}`);
+                    } catch (error) {
+                      console.error(
+                        `❌ Failed to delete task ${task.id}:`,
+                        error
+                      );
+                    }
+                  }
+                }
+
+                console.log("🗑️ All tasks deleted from Firebase");
+              }
+
+              // Clear local storage
+              console.log("🧹 Clearing local storage...");
               await AsyncStorage.clear();
-              Alert.alert("Success", "App data cleared successfully!");
-              loadPreferences(); // Reset to defaults
+
+              hideLoader();
+              Alert.alert(
+                "Success",
+                "All app data and tasks have been permanently deleted!"
+              );
+
+              // The preferences context will automatically reload
             } catch (error) {
+              hideLoader();
               console.error("Error clearing app data:", error);
-              Alert.alert("Error", "Failed to clear app data.");
+              Alert.alert(
+                "Error",
+                "Failed to clear all app data. Please try again."
+              );
             }
           },
         },
       ]
     );
+  };
+
+  const submitFeedback = async () => {
+    if (!feedbackMessage.trim()) {
+      Alert.alert("Error", "Please enter your feedback message.");
+      return;
+    }
+
+    try {
+      showLoader();
+
+      // Prepare email data
+      const emailData = {
+        to: "kaifzakey22@gmail.com",
+        subject: feedbackSubject.trim() || "TaskWize App Feedback",
+        message: `
+Feedback from TaskWize User
+==========================
+
+User Email: ${user?.email || "Not provided"}
+User ID: ${user?.uid || "Not provided"}
+Date: ${new Date().toISOString()}
+
+Subject: ${feedbackSubject.trim() || "General Feedback"}
+
+Message:
+${feedbackMessage.trim()}
+
+--
+Sent from TaskWize Mobile App
+        `.trim(),
+      };
+
+      // Use React Native Linking to open email app
+      const emailUrl = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.message)}`;
+
+      const canOpen = await Linking.canOpenURL(emailUrl);
+      if (canOpen) {
+        await Linking.openURL(emailUrl);
+
+        // Close modal and reset form
+        setShowFeedbackModal(false);
+        setFeedbackSubject("");
+        setFeedbackMessage("");
+
+        Alert.alert(
+          "Thank You!",
+          "Your default email app has been opened with your feedback. Please send the email to complete the submission."
+        );
+      } else {
+        throw new Error("No email app available");
+      }
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      Alert.alert(
+        "Error",
+        "Failed to open email app. You can manually send feedback to kaifzakey22@gmail.com"
+      );
+    } finally {
+      hideLoader();
+    }
   };
 
   const SettingItem = ({
@@ -506,7 +617,9 @@ const SettingsScreen = () => {
             title="Push Notifications"
             subtitle="Receive task reminders and updates"
             value={preferences.notifications}
-            onValueChange={(value) => updatePreference("notifications", value)}
+            onValueChange={(value) =>
+              updatePreferenceWithSpecialHandling("notifications", value)
+            }
           />
 
           <SwitchItem
@@ -524,7 +637,9 @@ const SettingsScreen = () => {
             title="Dark Mode"
             subtitle="Switch to dark theme"
             value={preferences.darkMode}
-            onValueChange={(value) => updatePreference("darkMode", value)}
+            onValueChange={(value) =>
+              updatePreferenceWithSpecialHandling("darkMode", value)
+            }
           />
 
           <SwitchItem
@@ -532,7 +647,9 @@ const SettingsScreen = () => {
             title="Sound Effects"
             subtitle="Play sounds for app interactions"
             value={preferences.soundEffects}
-            onValueChange={(value) => updatePreference("soundEffects", value)}
+            onValueChange={(value) =>
+              updatePreferenceWithSpecialHandling("soundEffects", value)
+            }
           />
         </View>
 
@@ -549,30 +666,6 @@ const SettingsScreen = () => {
           >
             Task Preferences
           </Text>
-
-          <SwitchItem
-            icon="alarm"
-            title="Task Reminders"
-            subtitle="Get reminded about upcoming tasks"
-            value={preferences.taskReminders}
-            onValueChange={(value) => updatePreference("taskReminders", value)}
-          />
-
-          <SwitchItem
-            icon="assessment"
-            title="Weekly Reports"
-            subtitle="Receive weekly productivity reports"
-            value={preferences.weeklyReports}
-            onValueChange={(value) => updatePreference("weeklyReports", value)}
-          />
-
-          <SwitchItem
-            icon="priority-high"
-            title="Priority Alerts"
-            subtitle="Special notifications for high priority tasks"
-            value={preferences.priorityAlerts}
-            onValueChange={(value) => updatePreference("priorityAlerts", value)}
-          />
 
           <SettingItem
             icon="category"
@@ -736,33 +829,9 @@ const SettingsScreen = () => {
           </Text>
 
           <SettingItem
-            icon="backup"
-            title="Backup Data"
-            subtitle="Export your tasks and settings"
-            onPress={() =>
-              Alert.alert(
-                "Feature Coming Soon",
-                "Data backup feature will be available in the next update."
-              )
-            }
-          />
-
-          <SettingItem
-            icon="restore"
-            title="Restore Data"
-            subtitle="Import previously backed up data"
-            onPress={() =>
-              Alert.alert(
-                "Feature Coming Soon",
-                "Data restore feature will be available in the next update."
-              )
-            }
-          />
-
-          <SettingItem
             icon="delete-forever"
             title="Clear App Data"
-            subtitle="Reset all preferences and clear local data"
+            subtitle="Reset preferences, clear local data, and delete all tasks"
             onPress={clearAppData}
           />
         </View>
@@ -789,12 +858,7 @@ const SettingsScreen = () => {
             icon="feedback"
             title="Send Feedback"
             subtitle="Help us improve TaskWize"
-            onPress={() =>
-              Alert.alert(
-                "Feedback",
-                "Thank you for your interest! Please send feedback to feedback@taskwize.com"
-              )
-            }
+            onPress={() => setShowFeedbackModal(true)}
           />
 
           <SettingItem
@@ -820,6 +884,25 @@ const SettingsScreen = () => {
               )
             }
           />
+        </View>
+
+        {/* Debug/Test Section - for development */}
+        <View className="mt-6">
+          <Text
+            className="text-lg font-semibold mb-4 mx-6"
+            style={{ color: colors.text }}
+          >
+            Debug & Testing
+          </Text>
+
+          <TouchableOpacity
+            className="mx-6 py-4 bg-blue-500 rounded-lg items-center mb-4"
+            onPress={testLocationMonitoring}
+          >
+            <Text className="text-white text-lg font-semibold">
+              Test Location Monitoring
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Logout Section */}
@@ -927,6 +1010,169 @@ const SettingsScreen = () => {
               >
                 <Text className="text-white font-semibold text-center">
                   Logout
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Feedback Modal */}
+      <Modal
+        visible={showFeedbackModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFeedbackModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              padding: 24,
+              width: "100%",
+              maxWidth: 500,
+              maxHeight: "80%",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: "bold",
+                color: colors.text,
+                marginBottom: 8,
+                textAlign: "center",
+              }}
+            >
+              Send Feedback
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.textSecondary,
+                marginBottom: 20,
+                textAlign: "center",
+              }}
+            >
+              Help us improve TaskWize with your suggestions and feedback
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "500",
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
+              Subject (optional)
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                fontSize: 16,
+                backgroundColor: colors.background,
+                color: colors.text,
+                marginBottom: 16,
+              }}
+              value={feedbackSubject}
+              onChangeText={setFeedbackSubject}
+              placeholder="e.g., Bug Report, Feature Request, General Feedback"
+              placeholderTextColor={colors.textSecondary}
+            />
+
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "500",
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
+              Your Feedback *
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                fontSize: 16,
+                backgroundColor: colors.background,
+                color: colors.text,
+                height: 120,
+                textAlignVertical: "top",
+                marginBottom: 20,
+              }}
+              value={feedbackMessage}
+              onChangeText={setFeedbackMessage}
+              placeholder="Tell us what you think about TaskWize. What features would you like to see? Any bugs or issues? We'd love to hear from you!"
+              placeholderTextColor={colors.textSecondary}
+              multiline
+            />
+
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  backgroundColor: colors.border,
+                  borderRadius: 8,
+                  marginRight: 10,
+                }}
+                onPress={() => {
+                  setShowFeedbackModal(false);
+                  setFeedbackSubject("");
+                  setFeedbackMessage("");
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontSize: 16,
+                    fontWeight: "600",
+                    textAlign: "center",
+                  }}
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  backgroundColor: colors.primary,
+                  borderRadius: 8,
+                  marginLeft: 10,
+                }}
+                onPress={submitFeedback}
+              >
+                <Text
+                  style={{
+                    color: "white",
+                    fontSize: 16,
+                    fontWeight: "600",
+                    textAlign: "center",
+                  }}
+                >
+                  Send Feedback
                 </Text>
               </TouchableOpacity>
             </View>

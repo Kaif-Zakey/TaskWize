@@ -22,14 +22,18 @@ const isMapAvailable = Platform.OS !== "web" && !isExpoGo;
 // Conditional imports for expo-maps (only in development/production builds)
 let GoogleMaps: any = null;
 let AppleMaps: any = null;
+let isMapModuleLoaded = false;
 
 if (!isExpoGo && Platform.OS !== "web") {
   try {
     const expoMaps = require("expo-maps"); // eslint-disable-line
     GoogleMaps = expoMaps.GoogleMaps;
     AppleMaps = expoMaps.AppleMaps;
-  } catch {
+    isMapModuleLoaded = !!(GoogleMaps && AppleMaps);
+  } catch (error) {
     // expo-maps not available, will use fallback
+    console.log("expo-maps not available:", error);
+    isMapModuleLoaded = false;
   }
 }
 
@@ -343,65 +347,160 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
                 </View>
               )}
             </View>
-          ) : isMapAvailable ? (
-            // Mobile with expo-maps - Auto-detect platform
-            Platform.OS === "ios" ? (
-              <AppleMaps.View
-                style={styles.map}
-                cameraPosition={{
-                  coordinates: {
-                    latitude: region.latitude,
-                    longitude: region.longitude,
-                  },
-                  zoom: 15,
-                }}
-                onMapClick={handleMapPress}
-                properties={{
-                  isMyLocationEnabled: true,
-                }}
-                markers={
-                  selectedLocation
-                    ? [
+          ) : isMapAvailable && isMapModuleLoaded ? (
+            // Mobile with expo-maps - Auto-detect platform with safety checks
+            (() => {
+              try {
+                return Platform.OS === "ios" && AppleMaps ? (
+                  <AppleMaps.View
+                    style={styles.map}
+                    cameraPosition={{
+                      coordinates: {
+                        latitude: region.latitude,
+                        longitude: region.longitude,
+                      },
+                      zoom: 15,
+                    }}
+                    onMapClick={handleMapPress}
+                    properties={{
+                      isMyLocationEnabled: true,
+                    }}
+                    markers={
+                      selectedLocation
+                        ? [
+                            {
+                              coordinates: {
+                                latitude: selectedLocation.latitude,
+                                longitude: selectedLocation.longitude,
+                              },
+                              title: selectedLocation.name,
+                            },
+                          ]
+                        : []
+                    }
+                  />
+                ) : GoogleMaps ? (
+                  <GoogleMaps.View
+                    style={styles.map}
+                    cameraPosition={{
+                      coordinates: {
+                        latitude: region.latitude,
+                        longitude: region.longitude,
+                      },
+                      zoom: 15,
+                    }}
+                    onMapClick={handleMapPress}
+                    properties={{
+                      isMyLocationEnabled: true,
+                    }}
+                    markers={
+                      selectedLocation
+                        ? [
+                            {
+                              coordinates: {
+                                latitude: selectedLocation.latitude,
+                                longitude: selectedLocation.longitude,
+                              },
+                              title: selectedLocation.name,
+                            },
+                          ]
+                        : []
+                    }
+                  />
+                ) : (
+                  // Fallback if map components are not available
+                  <View style={styles.fallbackContainer}>
+                    <View
+                      style={[
+                        styles.map,
                         {
-                          coordinates: {
-                            latitude: selectedLocation.latitude,
-                            longitude: selectedLocation.longitude,
-                          },
-                          title: selectedLocation.name,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: "#f0f0f0",
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: colors.border,
                         },
-                      ]
-                    : []
-                }
-              />
-            ) : (
-              <GoogleMaps.View
-                style={styles.map}
-                cameraPosition={{
-                  coordinates: {
-                    latitude: region.latitude,
-                    longitude: region.longitude,
-                  },
-                  zoom: 15,
-                }}
-                onMapClick={handleMapPress}
-                properties={{
-                  isMyLocationEnabled: true,
-                }}
-                markers={
-                  selectedLocation
-                    ? [
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="location-on"
+                        size={48}
+                        color={colors.primary}
+                      />
+                      <Text
+                        style={{
+                          color: colors.text,
+                          marginTop: 8,
+                          textAlign: "center",
+                          paddingHorizontal: 20,
+                          fontSize: 16,
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Map Not Available
+                      </Text>
+                      <Text
+                        style={{
+                          color: colors.textSecondary,
+                          marginTop: 4,
+                          textAlign: "center",
+                          paddingHorizontal: 20,
+                          fontSize: 12,
+                        }}
+                      >
+                        Use location buttons below
+                      </Text>
+                    </View>
+                  </View>
+                );
+              } catch (error) {
+                console.error("Map rendering error:", error);
+                // Return fallback on any error
+                return (
+                  <View style={styles.fallbackContainer}>
+                    <View
+                      style={[
+                        styles.map,
                         {
-                          coordinates: {
-                            latitude: selectedLocation.latitude,
-                            longitude: selectedLocation.longitude,
-                          },
-                          title: selectedLocation.name,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: "#f0f0f0",
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: colors.border,
                         },
-                      ]
-                    : []
-                }
-              />
-            )
+                      ]}
+                    >
+                      <MaterialIcons name="warning" size={48} color="#ff6b6b" />
+                      <Text
+                        style={{
+                          color: colors.text,
+                          marginTop: 8,
+                          textAlign: "center",
+                          paddingHorizontal: 20,
+                          fontSize: 16,
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Map Error
+                      </Text>
+                      <Text
+                        style={{
+                          color: colors.textSecondary,
+                          marginTop: 4,
+                          textAlign: "center",
+                          paddingHorizontal: 20,
+                          fontSize: 12,
+                        }}
+                      >
+                        Please use location buttons below
+                      </Text>
+                    </View>
+                  </View>
+                );
+              }
+            })()
           ) : (
             // Universal Fallback for Expo Go and when expo-maps is not available
             <View style={styles.fallbackContainer}>
@@ -561,6 +660,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     zIndex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
   },
   searchRow: {
     flexDirection: "row",
@@ -591,6 +692,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   currentLocationText: {
     color: "white",
@@ -598,10 +707,12 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   mapContainer: {
-    flex: 1,
+    height: 250, // Fixed height instead of flex: 1 to make it smaller
     margin: 16,
     borderRadius: 12,
     overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
   },
   map: {
     flex: 1,
@@ -613,6 +724,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   locationText: {
     flex: 1,
@@ -625,6 +746,7 @@ const styles = StyleSheet.create({
   locationAddress: {
     fontSize: 14,
     marginTop: 4,
+    lineHeight: 20,
   },
   // Styles for Expo Go fallback
   fallbackContainer: {

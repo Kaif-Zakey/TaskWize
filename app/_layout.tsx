@@ -1,11 +1,12 @@
-import React, { useEffect } from "react";
-import "./../global.css";
-import { Slot } from "expo-router";
 import { AuthProvider } from "@/context/AuthContext";
 import { LoaderProvider } from "@/context/LoaderContext";
+import { PreferencesProvider } from "@/context/PreferencesContext";
 import { ThemeProvider } from "@/context/ThemeContext";
-import { NotificationService } from "@/service/notificationService";
 import LocationMonitoringService from "@/service/locationMonitoringService";
+import { NotificationService } from "@/service/notificationService";
+import { Slot } from "expo-router";
+import React, { useEffect } from "react";
+import "./../global.css";
 
 const RootLayout = () => {
   useEffect(() => {
@@ -51,9 +52,11 @@ const RootLayout = () => {
   return (
     <ThemeProvider>
       <LoaderProvider>
-        <AuthProvider>
-          <Slot />
-        </AuthProvider>
+        <PreferencesProvider>
+          <AuthProvider>
+            <Slot />
+          </AuthProvider>
+        </PreferencesProvider>
       </LoaderProvider>
     </ThemeProvider>
   );

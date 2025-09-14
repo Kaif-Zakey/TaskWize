@@ -152,9 +152,25 @@ export const updateTask = async (id: string, task: Task) => {
     )
   );
 
-  // If task is completed, remove from location monitoring
+  // Handle location monitoring based on task status and location settings
   if (taskData.status === "completed") {
+    // Remove from location monitoring when completed
     LocationMonitoringService.removeTaskLocation(id);
+  } else if (
+    taskData.status === "pending" &&
+    taskData.location &&
+    taskData.notifyOnLocation
+  ) {
+    // Add back to location monitoring when marked as pending with location settings
+    LocationMonitoringService.addTaskLocation({
+      id: id,
+      title: taskData.title,
+      latitude: taskData.location.latitude,
+      longitude: taskData.location.longitude,
+      range: taskData.location.range || 100,
+      address: taskData.location.address,
+      status: taskData.status,
+    });
   }
 
   return updateDoc(taskDocRef, cleanedTask);

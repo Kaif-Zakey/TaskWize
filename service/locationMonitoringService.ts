@@ -1,7 +1,7 @@
+import { auth } from "@/firebase";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import { NotificationService } from "./notificationService";
-import { auth } from "@/firebase";
 
 const LOCATION_TASK_NAME = "background-location-task";
 
@@ -12,6 +12,7 @@ interface TaskLocation {
   longitude: number;
   range: number;
   address?: string;
+  status: "pending" | "completed";
 }
 
 // Define the background task at module level with error handling
@@ -217,6 +218,7 @@ class LocationMonitoringService {
 
   /**
    * Check if user is near any tracked task locations
+   * Enhanced to only notify for pending (incomplete) tasks with sound alerts
    */
   public static async checkProximityToTasks(userLocation: {
     latitude: number;
@@ -229,6 +231,11 @@ class LocationMonitoringService {
     }
 
     for (const task of this.trackedTasks) {
+      // Only check proximity for pending (incomplete) tasks
+      if (task.status !== "pending") {
+        continue;
+      }
+
       const distance = this.calculateDistance(
         userLocation.latitude,
         userLocation.longitude,
@@ -237,14 +244,26 @@ class LocationMonitoringService {
       );
 
       console.log(
-        `Distance to task "${task.title}": ${Math.round(distance)}m (range: ${task.range}m)`
+        `Distance to pending task "${task.title}": ${Math.round(distance)}m (range: ${task.range}m)`
       );
 
-      // Check if user is WITHIN the specified range
+      // Check if user is WITHIN the specified range for pending tasks
       if (distance <= task.range) {
         console.log(
-          `✅ User is near task: ${task.title} (${Math.round(distance)}m away)`
+          `✅ User is near incomplete task: ${task.title} (${Math.round(distance)}m away)`
         );
+
+        // Play sound immediately for location-based alert (if sound effects enabled)
+        try {
+          const soundEnabled =
+            await NotificationService.areSoundEffectsEnabled();
+          if (soundEnabled) {
+            await NotificationService.playDirectSound();
+            console.log("🔊 Played location-based task sound alert");
+          }
+        } catch (error) {
+          console.error("Error playing location sound alert:", error);
+        }
 
         // Send notification using the existing method signature
         await NotificationService.sendImmediateTaskNotification(

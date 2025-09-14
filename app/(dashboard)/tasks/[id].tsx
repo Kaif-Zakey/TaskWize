@@ -1,6 +1,7 @@
 import LocationPicker from "@/components/LocationPicker";
 import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
+import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
 import LocationMonitoringService from "@/service/locationMonitoringService";
 import { NotificationService } from "@/service/notificationService";
@@ -50,6 +51,7 @@ const TaskFormScreen = () => {
   const { hideLoader, showLoader } = useLoader();
   const { user } = useAuth();
   const { colors } = useTheme();
+  const { isLocationServicesEnabled } = usePreferences();
 
   useEffect(() => {
     const load = async () => {
@@ -179,14 +181,15 @@ const TaskFormScreen = () => {
     try {
       showLoader();
       if (isNew) {
-        const taskLocation = currentLocation
-          ? {
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              address: location || undefined,
-              range: notificationRange,
-            }
-          : undefined;
+        const taskLocation =
+          isLocationServicesEnabled && currentLocation
+            ? {
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                address: location || undefined,
+                range: notificationRange,
+              }
+            : undefined;
 
         const newTaskId = await createTask({
           title,
@@ -196,11 +199,20 @@ const TaskFormScreen = () => {
           category: category || undefined,
           priority,
           location: taskLocation,
-          notifyOnLocation: notifyOnLocation && currentLocation !== null,
+          notifyOnLocation:
+            isLocationServicesEnabled &&
+            notifyOnLocation &&
+            currentLocation !== null,
         });
 
         // Set up location monitoring if enabled
-        if (notifyOnLocation && currentLocation && taskLocation && newTaskId) {
+        if (
+          isLocationServicesEnabled &&
+          notifyOnLocation &&
+          currentLocation &&
+          taskLocation &&
+          newTaskId
+        ) {
           try {
             // Send immediate confirmation notification
             await NotificationService.sendImmediateTaskNotification(
@@ -221,6 +233,7 @@ const TaskFormScreen = () => {
               longitude: currentLocation.longitude,
               range: notificationRange,
               address: location || "Unknown location",
+              status: "pending", // New tasks start as pending
             });
           } catch {
             // Location monitoring setup failed, but task was created successfully
@@ -230,14 +243,15 @@ const TaskFormScreen = () => {
       } else {
         const existingTask = await getTaskById(id!);
         if (existingTask) {
-          const taskLocation = currentLocation
-            ? {
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                address: location || undefined,
-                range: notificationRange,
-              }
-            : undefined;
+          const taskLocation =
+            isLocationServicesEnabled && currentLocation
+              ? {
+                  latitude: currentLocation.latitude,
+                  longitude: currentLocation.longitude,
+                  address: location || undefined,
+                  range: notificationRange,
+                }
+              : undefined;
 
           await updateTask(id!, {
             ...existingTask,
@@ -246,11 +260,19 @@ const TaskFormScreen = () => {
             category: category || undefined,
             priority,
             location: taskLocation,
-            notifyOnLocation: notifyOnLocation && currentLocation !== null,
+            notifyOnLocation:
+              isLocationServicesEnabled &&
+              notifyOnLocation &&
+              currentLocation !== null,
           });
 
           // Schedule notification if enabled
-          if (notifyOnLocation && currentLocation && taskLocation) {
+          if (
+            isLocationServicesEnabled &&
+            notifyOnLocation &&
+            currentLocation &&
+            taskLocation
+          ) {
             try {
               // Send immediate confirmation notification
               await NotificationService.sendImmediateTaskNotification(
@@ -274,6 +296,17 @@ const TaskFormScreen = () => {
                 notificationRange,
                 0.1 // 6 seconds for immediate testing
               );
+
+              // Add updated task to location monitoring service
+              LocationMonitoringService.addTaskLocation({
+                id: id!,
+                title: title,
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                range: notificationRange,
+                address: location || "Unknown location",
+                status: existingTask.status || "pending", // Use existing status or default to pending
+              });
             } catch {
               // Notification setup failed, but task was updated successfully
               // Continue with success flow
@@ -474,262 +507,267 @@ const TaskFormScreen = () => {
             ))}
           </View>
 
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "500",
-              marginBottom: 8,
-              color: colors.text,
-            }}
-          >
-            Location
-          </Text>
-          <View style={{ marginBottom: 16 }}>
-            <TouchableOpacity
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                padding: 16,
-                borderRadius: 6,
-                backgroundColor: colors.surface,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-              onPress={() => setShowLocationPicker(true)}
-            >
-              <View style={{ flex: 1 }}>
-                {selectedLocationData ? (
-                  <View>
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        color: colors.text,
-                        fontWeight: "500",
-                      }}
-                    >
-                      {selectedLocationData.name || "Selected Location"}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: colors.textSecondary,
-                        marginTop: 2,
-                      }}
-                    >
-                      {selectedLocationData.address}
-                    </Text>
-                  </View>
-                ) : (
-                  <View>
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        color: colors.textSecondary,
-                      }}
-                    >
-                      Choose location from map
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        color: colors.textSecondary,
-                        marginTop: 2,
-                      }}
-                    >
-                      Tap to search or select on map
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <MaterialIcons name="map" size={24} color={colors.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{
-                backgroundColor: colors.primary,
-                padding: 12,
-                borderRadius: 6,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: 8,
-              }}
-              onPress={getCurrentLocation}
-              disabled={isLoadingLocation}
-            >
-              <MaterialIcons
-                name={isLoadingLocation ? "hourglass-empty" : "my-location"}
-                size={20}
-                color="white"
-              />
-              <Text style={{ color: "white", marginLeft: 8, fontSize: 14 }}>
-                {isLoadingLocation
-                  ? "Getting Current Location..."
-                  : "Use Current Location"}
+          {/* Location Section - Only show if location services are enabled */}
+          {isLocationServicesEnabled && (
+            <>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "500",
+                  marginBottom: 8,
+                  color: colors.text,
+                }}
+              >
+                Location
               </Text>
-            </TouchableOpacity>
-
-            {currentLocation && (
-              <View
-                style={{
-                  backgroundColor: colors.success + "20",
-                  padding: 12,
-                  borderRadius: 6,
-                  marginTop: 8,
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <MaterialIcons
-                  name="location-on"
-                  size={20}
-                  color={colors.success}
-                />
-                <View style={{ marginLeft: 8, flex: 1 }}>
-                  <Text
-                    style={{
-                      color: colors.success,
-                      fontSize: 14,
-                      fontWeight: "500",
-                    }}
-                  >
-                    Location Ready
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.success,
-                      fontSize: 12,
-                      opacity: 0.8,
-                    }}
-                  >
-                    {selectedLocationData?.address ||
-                      location ||
-                      `${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Notification Settings */}
-          {currentLocation && (
-            <View style={{ marginBottom: 16 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 12,
-                }}
-              >
-                <Text
+              <View style={{ marginBottom: 16 }}>
+                <TouchableOpacity
                   style={{
-                    fontSize: 18,
-                    fontWeight: "500",
-                    color: colors.text,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    padding: 16,
+                    borderRadius: 6,
+                    backgroundColor: colors.surface,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                   }}
+                  onPress={() => setShowLocationPicker(true)}
                 >
-                  Location Notifications
-                </Text>
-                <Switch
-                  value={notifyOnLocation}
-                  onValueChange={setNotifyOnLocation}
-                  trackColor={{
-                    false: colors.border,
-                    true: colors.primary + "40",
-                  }}
-                  thumbColor={
-                    notifyOnLocation ? colors.primary : colors.textSecondary
-                  }
-                />
-              </View>
-
-              {notifyOnLocation && (
-                <View>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "500",
-                      marginBottom: 8,
-                      color: colors.text,
-                    }}
-                  >
-                    Notification Range: {notificationRange}m
-                  </Text>
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      marginBottom: 8,
-                    }}
-                  >
-                    {[50, 100, 200, 500, 1000].map((range) => (
-                      <TouchableOpacity
-                        key={range}
-                        onPress={() => setNotificationRange(range)}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 6,
-                          marginRight: 8,
-                          marginBottom: 8,
-                          borderRadius: 16,
-                          backgroundColor:
-                            notificationRange === range
-                              ? colors.primary
-                              : colors.surface,
-                          borderWidth: 1,
-                          borderColor:
-                            notificationRange === range
-                              ? colors.primary
-                              : colors.border,
-                        }}
-                      >
+                  <View style={{ flex: 1 }}>
+                    {selectedLocationData ? (
+                      <View>
                         <Text
                           style={{
-                            color:
-                              notificationRange === range
-                                ? "white"
-                                : colors.textSecondary,
-                            fontSize: 12,
+                            fontSize: 16,
+                            color: colors.text,
+                            fontWeight: "500",
                           }}
                         >
-                          {range}m
+                          {selectedLocationData.name || "Selected Location"}
                         </Text>
-                      </TouchableOpacity>
-                    ))}
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            color: colors.textSecondary,
+                            marginTop: 2,
+                          }}
+                        >
+                          {selectedLocationData.address}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View>
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            color: colors.textSecondary,
+                          }}
+                        >
+                          Choose location from map
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            color: colors.textSecondary,
+                            marginTop: 2,
+                          }}
+                        >
+                          Tap to search or select on map
+                        </Text>
+                      </View>
+                    )}
                   </View>
+                  <MaterialIcons name="map" size={24} color={colors.primary} />
+                </TouchableOpacity>
 
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: colors.primary,
+                    padding: 12,
+                    borderRadius: 6,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginTop: 8,
+                  }}
+                  onPress={getCurrentLocation}
+                  disabled={isLoadingLocation}
+                >
+                  <MaterialIcons
+                    name={isLoadingLocation ? "hourglass-empty" : "my-location"}
+                    size={20}
+                    color="white"
+                  />
+                  <Text style={{ color: "white", marginLeft: 8, fontSize: 14 }}>
+                    {isLoadingLocation
+                      ? "Getting Current Location..."
+                      : "Use Current Location"}
+                  </Text>
+                </TouchableOpacity>
+
+                {currentLocation && (
                   <View
                     style={{
-                      backgroundColor: colors.info + "20",
+                      backgroundColor: colors.success + "20",
                       padding: 12,
-                      borderRadius: 8,
+                      borderRadius: 6,
+                      marginTop: 8,
                       flexDirection: "row",
                       alignItems: "center",
                     }}
                   >
                     <MaterialIcons
-                      name="notifications"
-                      size={16}
-                      color={colors.info}
+                      name="location-on"
+                      size={20}
+                      color={colors.success}
                     />
+                    <View style={{ marginLeft: 8, flex: 1 }}>
+                      <Text
+                        style={{
+                          color: colors.success,
+                          fontSize: 14,
+                          fontWeight: "500",
+                        }}
+                      >
+                        Location Ready
+                      </Text>
+                      <Text
+                        style={{
+                          color: colors.success,
+                          fontSize: 12,
+                          opacity: 0.8,
+                        }}
+                      >
+                        {selectedLocationData?.address ||
+                          location ||
+                          `${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Notification Settings */}
+              {currentLocation && (
+                <View style={{ marginBottom: 16 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 12,
+                    }}
+                  >
                     <Text
                       style={{
-                        color: colors.info,
-                        fontSize: 12,
-                        marginLeft: 8,
-                        flex: 1,
+                        fontSize: 18,
+                        fontWeight: "500",
+                        color: colors.text,
                       }}
                     >
-                      You will be notified when you are within{" "}
-                      {notificationRange}m of this location
+                      Location Notifications
                     </Text>
+                    <Switch
+                      value={notifyOnLocation}
+                      onValueChange={setNotifyOnLocation}
+                      trackColor={{
+                        false: colors.border,
+                        true: colors.primary + "40",
+                      }}
+                      thumbColor={
+                        notifyOnLocation ? colors.primary : colors.textSecondary
+                      }
+                    />
                   </View>
+
+                  {notifyOnLocation && (
+                    <View>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "500",
+                          marginBottom: 8,
+                          color: colors.text,
+                        }}
+                      >
+                        Notification Range: {notificationRange}m
+                      </Text>
+
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {[50, 100, 200, 500, 1000].map((range) => (
+                          <TouchableOpacity
+                            key={range}
+                            onPress={() => setNotificationRange(range)}
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              marginRight: 8,
+                              marginBottom: 8,
+                              borderRadius: 16,
+                              backgroundColor:
+                                notificationRange === range
+                                  ? colors.primary
+                                  : colors.surface,
+                              borderWidth: 1,
+                              borderColor:
+                                notificationRange === range
+                                  ? colors.primary
+                                  : colors.border,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color:
+                                  notificationRange === range
+                                    ? "white"
+                                    : colors.textSecondary,
+                                fontSize: 12,
+                              }}
+                            >
+                              {range}m
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+
+                      <View
+                        style={{
+                          backgroundColor: colors.info + "20",
+                          padding: 12,
+                          borderRadius: 8,
+                          flexDirection: "row",
+                          alignItems: "center",
+                        }}
+                      >
+                        <MaterialIcons
+                          name="notifications"
+                          size={16}
+                          color={colors.info}
+                        />
+                        <Text
+                          style={{
+                            color: colors.info,
+                            fontSize: 12,
+                            marginLeft: 8,
+                            flex: 1,
+                          }}
+                        >
+                          You will be notified when you are within{" "}
+                          {notificationRange}m of this location
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
               )}
-            </View>
+            </>
           )}
 
           <TouchableOpacity
