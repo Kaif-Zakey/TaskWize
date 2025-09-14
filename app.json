@@ -42,7 +42,7 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "package": "com.kaif_zaki.TaskWize"
+      "package": "com.kaifzaki.taskwize"
     },
     "web": {
       "bundler": "metro",
