@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-Icon.png",
+        "foregroundImage": "./assets/images/Icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -44,7 +44,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/Icon.png"
     },
     "plugins": [
       "expo-router",
@@ -102,6 +102,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dd246295-fdfa-43fb-a3a7-681ffe88ce94"
+      }
     }
   }
 }
