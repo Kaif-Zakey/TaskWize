@@ -1,4 +1,6 @@
-gitignore
     node_modules/
-    .expo/
     dist/
+    .vscode/
+    .idea/
+    # Expo
+    .expo/
