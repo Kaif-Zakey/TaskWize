@@ -12,30 +12,25 @@ import {
   View,
 } from "react-native";
 
-// Platform-specific map components
+// Import expo-maps components directly for EAS builds
 let AppleMaps: any = null;
 let GoogleMaps: any = null;
 
-// Initialize map components on non-web platforms
-const initializeMaps = () => {
+// Try to import expo-maps - this will work in development and EAS builds
+try {
   if (Platform.OS !== "web") {
-    try {
-      const ExpoMaps = eval("require")("expo-maps");
-      return {
-        AppleMaps: ExpoMaps.AppleMaps,
-        GoogleMaps: ExpoMaps.GoogleMaps,
-      };
-    } catch (error) {
-      console.warn("expo-maps not available:", error);
-      return { AppleMaps: null, GoogleMaps: null };
-    }
+    // Import directly for better EAS build compatibility
+    const ExpoMaps = eval('require("expo-maps")');
+    AppleMaps = ExpoMaps?.AppleMaps || null;
+    GoogleMaps = ExpoMaps?.GoogleMaps || null;
   }
-  return { AppleMaps: null, GoogleMaps: null };
-};
-
-const { AppleMaps: Apple, GoogleMaps: Google } = initializeMaps();
-AppleMaps = Apple;
-GoogleMaps = Google;
+} catch (error) {
+  // Fallback gracefully if expo-maps is not available
+  console.log(
+    "Maps not available:",
+    error instanceof Error ? error.message : "Unknown error"
+  );
+}
 
 interface LocationData {
   latitude: number;
