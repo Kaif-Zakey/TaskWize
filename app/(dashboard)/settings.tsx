@@ -3,7 +3,6 @@ import { useLoader } from "@/context/LoaderContext";
 import { AppPreferences, usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
 import { auth } from "@/firebase";
-import LocationMonitoringService from "@/service/locationMonitoringService";
 import { NotificationService } from "@/service/notificationService";
 import { deleteTask, getAllTaskByUserId } from "@/service/taskService";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -262,123 +261,6 @@ const SettingsScreen = () => {
       console.error("❌ Logout error:", error);
       console.error("❌ Error details:", (error as Error).message);
       Alert.alert("Error", "Failed to logout. Please try again.");
-    } finally {
-      hideLoader();
-    }
-  };
-
-  // Test location monitoring system
-  const testLocationMonitoring = async () => {
-    try {
-      showLoader();
-
-      // Initialize location monitoring
-      const initialized = await LocationMonitoringService.initialize();
-
-      if (!initialized) {
-        Alert.alert(
-          "Location Monitoring Test",
-          "Failed to initialize location monitoring. Please check permissions."
-        );
-        return;
-      }
-
-      // Get service status
-      const status = LocationMonitoringService.getStatus();
-
-      // Create a test task location (at user's current location or default)
-      const testTaskLocation = {
-        id: "test-task-" + Date.now(),
-        title: "Test Location Reminder",
-        latitude: 37.7749, // San Francisco as example
-        longitude: -122.4194,
-        range: 100, // 100 meters
-        address: "Test Location",
-        status: "pending" as const, // Test with pending status
-      };
-
-      // Add test task for monitoring
-      LocationMonitoringService.addTaskLocation(testTaskLocation);
-
-      // Get tracked tasks
-      const trackedTasks = LocationMonitoringService.getTrackedTasks();
-
-      Alert.alert(
-        "Location Monitoring Test Results",
-        `Service Status:
-• Initialized: ${status.initialized ? "✅" : "❌"}
-• Monitoring: ${status.monitoring ? "✅" : "❌"}
-• Authenticated: ${status.authenticated ? "✅" : "❌"}
-• Tracked Tasks: ${trackedTasks.length}
-
-Test task added with 100m range. The system will notify you when you approach the test location.
-
-To remove test task, toggle Location Services off and on.`,
-        [
-          {
-            text: "OK",
-            onPress: () => console.log("Location monitoring test completed"),
-          },
-        ]
-      );
-    } catch (error) {
-      console.error("Location monitoring test error:", error);
-      Alert.alert(
-        "Test Error",
-        "Failed to test location monitoring: " + (error as Error).message
-      );
-    } finally {
-      hideLoader();
-    }
-  };
-
-  // Debug authentication persistence on Android
-  const debugAuthPersistence = async () => {
-    try {
-      showLoader();
-
-      console.log("🔍 === Auth Debug Info ===");
-
-      // Check Firebase auth state
-      const currentUser = auth.currentUser;
-      console.log("Firebase current user:", currentUser?.uid);
-      console.log("User email:", currentUser?.email);
-
-      // Check AsyncStorage data
-      const savedPreferences = await AsyncStorage.getItem("appPreferences");
-      console.log(
-        "Saved preferences:",
-        savedPreferences ? "Found" : "Not found"
-      );
-
-      const userProfile = await AsyncStorage.getItem("userProfile");
-      console.log("User profile:", userProfile ? "Found" : "Not found");
-
-      // Check location monitoring status
-      const locationStatus = LocationMonitoringService.getStatus();
-      console.log("Location monitoring status:", locationStatus);
-
-      // Get all AsyncStorage keys
-      const keys = await AsyncStorage.getAllKeys();
-      console.log("AsyncStorage keys:", keys);
-
-      Alert.alert(
-        "Auth Debug Results",
-        `Authentication Status:
-• Firebase User: ${currentUser ? "✅ Logged in" : "❌ Not logged in"}
-• User ID: ${currentUser?.uid || "None"}
-• Email: ${currentUser?.email || "None"}
-• Preferences: ${savedPreferences ? "✅ Saved" : "❌ Missing"}
-• Profile: ${userProfile ? "✅ Saved" : "❌ Missing"}
-• Location Service: ${locationStatus.authenticated ? "✅ Ready" : "❌ Not authenticated"}
-• AsyncStorage Keys: ${keys.length}
-
-Check console logs for detailed information.`,
-        [{ text: "OK" }]
-      );
-    } catch (error) {
-      console.error("Auth debug error:", error);
-      Alert.alert("Debug Error", "Failed to retrieve debug information");
     } finally {
       hideLoader();
     }
@@ -936,34 +818,6 @@ Sent from TaskWize Mobile App
               )
             }
           />
-        </View>
-
-        {/* Debug/Test Section - for development */}
-        <View className="mt-6">
-          <Text
-            className="text-lg font-semibold mb-4 mx-6"
-            style={{ color: colors.text }}
-          >
-            Debug & Testing
-          </Text>
-
-          <TouchableOpacity
-            className="mx-6 py-4 bg-blue-500 rounded-lg items-center mb-4"
-            onPress={testLocationMonitoring}
-          >
-            <Text className="text-white text-lg font-semibold">
-              Test Location Monitoring
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="mx-6 py-4 bg-purple-500 rounded-lg items-center mb-4"
-            onPress={debugAuthPersistence}
-          >
-            <Text className="text-white text-lg font-semibold">
-              Debug Auth Persistence
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Logout Section */}

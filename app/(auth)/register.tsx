@@ -253,7 +253,7 @@ const Register = () => {
                         showConfirmPassword ? "visibility" : "visibility-off"
                       }
                       size={20}
-                      color="#ffffff80"
+                      color="#8b5cf6"
                     />
                   </TouchableOpacity>
                 </View>

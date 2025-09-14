@@ -46,6 +46,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!isMounted) return;
 
+      console.log(
+        "🔄 Auth state changed:",
+        currentUser ? "User logged in" : "User logged out"
+      );
+
       const previousUser = previousUserRef.current;
       const wasLoggedIn = previousUser !== null;
       const isNowLoggedIn = currentUser !== null;
@@ -59,19 +64,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Mark initialization as complete once we get the first auth state
       if (isInitializing) {
         setIsInitializing(false);
+        console.log("✅ Auth initialization completed");
       }
 
-      // Handle location monitoring when user logs in
+      // Handle location monitoring when user logs in (not during initial load if already logged in)
       if (!wasLoggedIn && isNowLoggedIn) {
         console.log("👤 User logged in, initializing location monitoring");
         try {
-          const initialized = await LocationMonitoringService.initialize();
-          if (initialized) {
-            // Restore tasks with location monitoring
-            await LocationMonitoringService.restoreTasksFromFirebase(
-              currentUser.uid
-            );
-          }
+          // Add a small delay to ensure the auth state is fully established
+          setTimeout(async () => {
+            const initialized = await LocationMonitoringService.initialize();
+            if (initialized) {
+              console.log(
+                "📍 Location monitoring initialized, restoring tasks"
+              );
+              // Restore tasks with location monitoring
+              await LocationMonitoringService.restoreTasksFromFirebase(
+                currentUser.uid
+              );
+            } else {
+              console.log("⚠️ Failed to initialize location monitoring");
+            }
+          }, 1000);
         } catch (error) {
           console.error(
             "Error initializing location monitoring after login:",
@@ -80,8 +94,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
+      // Handle case when user is already logged in on app start (restored from persistence)
+      if (isInitializing && isNowLoggedIn) {
+        console.log(
+          "🔄 User already logged in on app start, initializing location monitoring"
+        );
+        try {
+          // Add a delay to ensure all services are ready
+          setTimeout(async () => {
+            const initialized = await LocationMonitoringService.initialize();
+            if (initialized) {
+              console.log(
+                "📍 Location monitoring initialized on app start, restoring tasks"
+              );
+              // Restore tasks with location monitoring
+              await LocationMonitoringService.restoreTasksFromFirebase(
+                currentUser.uid
+              );
+            } else {
+              console.log(
+                "⚠️ Failed to initialize location monitoring on app start"
+              );
+            }
+          }, 2000); // Longer delay for app start
+        } catch (error) {
+          console.error(
+            "Error initializing location monitoring on app start:",
+            error
+          );
+        }
+      }
+
       // Handle location monitoring cleanup when user logs out (not during initial load)
       if (wasLoggedIn && !isNowLoggedIn) {
+        console.log("👋 User logged out, cleaning up location monitoring");
         LocationMonitoringService.handleUserLogout();
       }
     });

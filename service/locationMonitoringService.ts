@@ -191,8 +191,11 @@ class LocationMonitoringService {
       );
 
       console.log(
-        `📍 Found ${tasksWithLocation.length} pending tasks with location monitoring`
+        `📍 Found ${tasksWithLocation.length} pending tasks with location monitoring out of ${allTasks.length} total tasks`
       );
+
+      // Clear existing tracked tasks first
+      this.trackedTasks = [];
 
       // Add each task to location monitoring
       for (const task of tasksWithLocation) {
@@ -209,10 +212,31 @@ class LocationMonitoringService {
         }
       }
 
-      console.log("✅ Task restoration completed");
+      console.log(
+        `✅ Task restoration completed. Now tracking ${this.trackedTasks.length} tasks`
+      );
+
+      // Start monitoring if we have tasks and not already monitoring
+      if (this.trackedTasks.length > 0 && !this.isMonitoring) {
+        console.log("🚀 Starting location monitoring for restored tasks");
+        await this.startLocationMonitoring();
+      }
     } catch (error) {
       console.error("❌ Error restoring tasks from Firebase:", error);
     }
+  }
+
+  /**
+   * Force refresh tasks from Firebase (useful for debugging)
+   */
+  static async forceRefreshTasks() {
+    if (!auth.currentUser) {
+      console.log("👤 User not authenticated, cannot refresh tasks");
+      return;
+    }
+
+    console.log("🔄 Force refreshing tasks from Firebase");
+    await this.restoreTasksFromFirebase(auth.currentUser.uid);
   }
 
   /**
