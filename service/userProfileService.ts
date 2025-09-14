@@ -47,7 +47,6 @@ export const saveUserProfile = async (
         ...profileData,
         updatedAt: serverTimestamp(),
       });
-      console.log(`✅ User profile updated for userId: ${userId}`);
     } else {
       // Create new profile
       await setDoc(userDocRef, {
@@ -55,7 +54,6 @@ export const saveUserProfile = async (
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      console.log(`✅ New user profile created for userId: ${userId}`);
     }
   } catch (error) {
     console.error("❌ Error saving user profile to Firestore:", error);
@@ -81,14 +79,11 @@ export const loadUserProfile = async (
 
     if (docSnap.exists()) {
       const data = docSnap.data() as UserProfile;
-      console.log(`✅ User profile loaded for userId: ${userId}`);
       return data;
     } else {
-      console.log(`📄 No user profile found for userId: ${userId}`);
       return null;
     }
-  } catch (error) {
-    console.error("❌ Error loading user profile from Firestore:", error);
+  } catch {
     throw new Error("Failed to load profile data");
   }
 };
@@ -108,10 +103,7 @@ export const updateUserProfile = async (
       ...updates,
       updatedAt: serverTimestamp(),
     });
-
-    console.log("✅ User profile updated successfully in Firestore");
-  } catch (error) {
-    console.error("❌ Error updating user profile in Firestore:", error);
+  } catch {
     throw new Error("Failed to update profile data");
   }
 };

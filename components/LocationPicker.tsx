@@ -12,24 +12,25 @@ import {
   View,
 } from "react-native";
 
-// Import expo-maps components directly for EAS builds
-let AppleMaps: any = null;
-let GoogleMaps: any = null;
+// Import expo-maps components conditionally
+import Constants from "expo-constants";
 
-// Try to import expo-maps - this will work in development and EAS builds
-try {
-  if (Platform.OS !== "web") {
-    // Import directly for better EAS build compatibility
-    const ExpoMaps = eval('require("expo-maps")');
-    AppleMaps = ExpoMaps?.AppleMaps || null;
-    GoogleMaps = ExpoMaps?.GoogleMaps || null;
+// Check if we're in Expo Go vs development build
+const isExpoGo = Constants.appOwnership === "expo";
+const isMapAvailable = Platform.OS !== "web" && !isExpoGo;
+
+// Conditional imports for expo-maps (only in development/production builds)
+let GoogleMaps: any = null;
+let AppleMaps: any = null;
+
+if (!isExpoGo && Platform.OS !== "web") {
+  try {
+    const expoMaps = require("expo-maps"); // eslint-disable-line
+    GoogleMaps = expoMaps.GoogleMaps;
+    AppleMaps = expoMaps.AppleMaps;
+  } catch {
+    // expo-maps not available, will use fallback
   }
-} catch (error) {
-  // Fallback gracefully if expo-maps is not available
-  console.log(
-    "Maps not available:",
-    error instanceof Error ? error.message : "Unknown error"
-  );
 }
 
 interface LocationData {
@@ -37,6 +38,7 @@ interface LocationData {
   longitude: number;
   address?: string;
   name?: string;
+  range?: number; // notification range in meters
 }
 
 interface LocationPickerProps {
@@ -341,102 +343,159 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
                 </View>
               )}
             </View>
-          ) : Platform.OS === "ios" && AppleMaps ? (
-            // iOS with AppleMaps
-            <AppleMaps.View
-              style={styles.map}
-              cameraPosition={{
-                coordinates: {
-                  latitude: region.latitude,
-                  longitude: region.longitude,
-                },
-                zoom: 15,
-              }}
-              onMapClick={handleMapPress}
-              properties={{
-                isMyLocationEnabled: true,
-              }}
-              markers={
-                selectedLocation
-                  ? [
-                      {
-                        coordinates: {
-                          latitude: selectedLocation.latitude,
-                          longitude: selectedLocation.longitude,
-                        },
-                        title: selectedLocation.name,
-                      },
-                    ]
-                  : []
-              }
-            />
-          ) : Platform.OS === "android" && GoogleMaps ? (
-            // Android with GoogleMaps
-            <GoogleMaps.View
-              style={styles.map}
-              cameraPosition={{
-                coordinates: {
-                  latitude: region.latitude,
-                  longitude: region.longitude,
-                },
-                zoom: 15,
-              }}
-              onMapClick={handleMapPress}
-              properties={{
-                isMyLocationEnabled: true,
-              }}
-              markers={
-                selectedLocation
-                  ? [
-                      {
-                        coordinates: {
-                          latitude: selectedLocation.latitude,
-                          longitude: selectedLocation.longitude,
-                        },
-                        title: selectedLocation.name,
-                      },
-                    ]
-                  : []
-              }
-            />
-          ) : (
-            // Fallback for when expo-maps is not available
-            <View
-              style={[
-                styles.map,
-                {
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: "#f0f0f0",
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <MaterialIcons
-                name="map"
-                size={48}
-                color={colors.textSecondary}
-              />
-              <Text
-                style={{
-                  color: colors.text,
-                  marginTop: 8,
-                  textAlign: "center",
-                  paddingHorizontal: 20,
+          ) : isMapAvailable ? (
+            // Mobile with expo-maps - Auto-detect platform
+            Platform.OS === "ios" ? (
+              <AppleMaps.View
+                style={styles.map}
+                cameraPosition={{
+                  coordinates: {
+                    latitude: region.latitude,
+                    longitude: region.longitude,
+                  },
+                  zoom: 15,
                 }}
+                onMapClick={handleMapPress}
+                properties={{
+                  isMyLocationEnabled: true,
+                }}
+                markers={
+                  selectedLocation
+                    ? [
+                        {
+                          coordinates: {
+                            latitude: selectedLocation.latitude,
+                            longitude: selectedLocation.longitude,
+                          },
+                          title: selectedLocation.name,
+                        },
+                      ]
+                    : []
+                }
+              />
+            ) : (
+              <GoogleMaps.View
+                style={styles.map}
+                cameraPosition={{
+                  coordinates: {
+                    latitude: region.latitude,
+                    longitude: region.longitude,
+                  },
+                  zoom: 15,
+                }}
+                onMapClick={handleMapPress}
+                properties={{
+                  isMyLocationEnabled: true,
+                }}
+                markers={
+                  selectedLocation
+                    ? [
+                        {
+                          coordinates: {
+                            latitude: selectedLocation.latitude,
+                            longitude: selectedLocation.longitude,
+                          },
+                          title: selectedLocation.name,
+                        },
+                      ]
+                    : []
+                }
+              />
+            )
+          ) : (
+            // Universal Fallback for Expo Go and when expo-maps is not available
+            <View style={styles.fallbackContainer}>
+              <View
+                style={[
+                  styles.map,
+                  {
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: "#f0f0f0",
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  },
+                ]}
               >
-                Map functionality requires a development build
-              </Text>
-              {selectedLocation && (
-                <View style={{ marginTop: 16, alignItems: "center" }}>
-                  <Text style={{ color: colors.text, fontWeight: "bold" }}>
-                    Selected Location:
-                  </Text>
-                  <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
-                    {selectedLocation.latitude.toFixed(6)},{" "}
-                    {selectedLocation.longitude.toFixed(6)}
+                <MaterialIcons
+                  name="location-on"
+                  size={48}
+                  color={colors.primary}
+                />
+                <Text
+                  style={{
+                    color: colors.text,
+                    marginTop: 8,
+                    textAlign: "center",
+                    paddingHorizontal: 20,
+                    fontSize: 16,
+                    fontWeight: "bold",
+                  }}
+                >
+                  {isExpoGo ? "Location Picker" : "Map Loading..."}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    marginTop: 4,
+                    textAlign: "center",
+                    paddingHorizontal: 20,
+                    fontSize: 12,
+                  }}
+                >
+                  {isExpoGo
+                    ? "Use location buttons below or enter manually"
+                    : "Please wait while map loads..."}
+                </Text>
+
+                {/* Current Location Button for Expo Go */}
+                {isExpoGo && (
+                  <TouchableOpacity
+                    style={[
+                      styles.locationButton,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={getCurrentLocation}
+                  >
+                    <MaterialIcons name="my-location" size={20} color="white" />
+                    <Text style={styles.locationButtonText}>
+                      Get Current Location
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {selectedLocation && (
+                  <View style={{ marginTop: 16, alignItems: "center" }}>
+                    <Text style={{ color: colors.text, fontWeight: "bold" }}>
+                      Selected Location:
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, marginTop: 4 }}>
+                      {selectedLocation.latitude.toFixed(6)},{" "}
+                      {selectedLocation.longitude.toFixed(6)}
+                    </Text>
+                    {selectedLocation.address && (
+                      <Text
+                        style={{
+                          color: colors.textSecondary,
+                          marginTop: 2,
+                          fontSize: 12,
+                        }}
+                      >
+                        {selectedLocation.address}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {/* Message for Expo Go users */}
+              {isExpoGo && (
+                <View style={{ padding: 16, alignItems: "center" }}>
+                  <Text
+                    style={{ color: colors.textSecondary, textAlign: "center" }}
+                  >
+                    Use the search function above to find locations in Expo Go
                   </Text>
                 </View>
               )}
@@ -566,6 +625,24 @@ const styles = StyleSheet.create({
   locationAddress: {
     fontSize: 14,
     marginTop: 4,
+  },
+  // Styles for Expo Go fallback
+  fallbackContainer: {
+    flex: 1,
+  },
+  locationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  locationButtonText: {
+    color: "white",
+    fontWeight: "600",
+    marginLeft: 8,
   },
 });
 

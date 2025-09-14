@@ -80,8 +80,7 @@ const TaskFormScreen = () => {
         try {
           const defaultCategory = await getDefaultTaskCategory();
           setCategory(defaultCategory);
-        } catch (error) {
-          console.error("Error loading default category:", error);
+        } catch {
           setCategory("Work"); // Fallback
         }
       }
@@ -223,15 +222,9 @@ const TaskFormScreen = () => {
               range: notificationRange,
               address: location || "Unknown location",
             });
-
-            console.log(
-              `✅ Location monitoring set up for task "${title}" within ${notificationRange}m`
-            );
-          } catch (notificationError) {
-            console.error(
-              "Failed to set up location monitoring:",
-              notificationError
-            );
+          } catch {
+            // Location monitoring setup failed, but task was created successfully
+            // Continue with success flow
           }
         }
       } else {
@@ -281,19 +274,21 @@ const TaskFormScreen = () => {
                 notificationRange,
                 0.1 // 6 seconds for immediate testing
               );
-            } catch (notificationError) {
-              console.error(
-                "Failed to schedule notification for updated task:",
-                notificationError
-              );
+            } catch {
+              // Notification setup failed, but task was updated successfully
+              // Continue with success flow
             }
           }
         }
       }
       router.back();
     } catch (err) {
-      console.error(`Error ${isNew ? "saving" : "updating"} task`, err);
-      Alert.alert("Error", `Failed to ${isNew ? "save" : "update"} task`);
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred";
+      Alert.alert(
+        "Error",
+        `Failed to ${isNew ? "save" : "update"} task: ${errorMessage}`
+      );
     } finally {
       hideLoader();
     }

@@ -69,15 +69,43 @@ const Login = () => {
 
     setIsLoading(true);
     try {
-      const res = await login(email.trim(), password);
-      console.log(res);
+      await login(email.trim(), password);
       router.push("/home");
-    } catch (err) {
-      console.error(err);
-      Alert.alert(
-        "Login Failed",
-        "Invalid email or password. Please try again."
-      );
+    } catch (err: any) {
+      let errorMessage = "An unexpected error occurred. Please try again.";
+
+      // Handle specific Firebase error codes
+      if (err?.code) {
+        switch (err.code) {
+          case "auth/user-not-found":
+            errorMessage = "No account found with this email address.";
+            break;
+          case "auth/wrong-password":
+            errorMessage = "Incorrect password. Please try again.";
+            break;
+          case "auth/invalid-email":
+            errorMessage = "Invalid email address format.";
+            break;
+          case "auth/user-disabled":
+            errorMessage = "This account has been disabled.";
+            break;
+          case "auth/too-many-requests":
+            errorMessage = "Too many failed attempts. Please try again later.";
+            break;
+          case "auth/network-request-failed":
+            errorMessage = "Network error. Please check your connection.";
+            break;
+          case "auth/invalid-credential":
+            errorMessage =
+              "Invalid email or password. Please check your credentials.";
+            break;
+          default:
+            errorMessage =
+              "Login failed. Please check your email and password.";
+        }
+      }
+
+      Alert.alert("Login Failed", errorMessage);
     } finally {
       setIsLoading(false);
     }

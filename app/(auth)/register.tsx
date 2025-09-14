@@ -83,15 +83,36 @@ const Register = () => {
 
     setIsLoading(true);
     try {
-      const res = await register(email.trim(), password);
-      console.log(res);
+      await register(email.trim(), password);
       router.push("/home");
-    } catch (err) {
-      console.error(err);
-      Alert.alert(
-        "Registration Failed",
-        "An error occurred during registration. Please try again."
-      );
+    } catch (err: any) {
+      let errorMessage = "An unexpected error occurred. Please try again.";
+
+      // Handle specific Firebase error codes
+      if (err?.code) {
+        switch (err.code) {
+          case "auth/email-already-in-use":
+            errorMessage = "An account with this email already exists.";
+            break;
+          case "auth/invalid-email":
+            errorMessage = "Invalid email address format.";
+            break;
+          case "auth/weak-password":
+            errorMessage =
+              "Password is too weak. Please choose a stronger password.";
+            break;
+          case "auth/network-request-failed":
+            errorMessage = "Network error. Please check your connection.";
+            break;
+          case "auth/too-many-requests":
+            errorMessage = "Too many requests. Please try again later.";
+            break;
+          default:
+            errorMessage = "Registration failed. Please try again.";
+        }
+      }
+
+      Alert.alert("Registration Failed", errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -102,8 +102,6 @@ export const getTaskById = async (id: string) => {
 
 export const deleteTask = async (id: string, userId?: string) => {
   try {
-    console.log("🗑️ Starting task deletion for ID:", id);
-
     if (!id) {
       throw new Error("Task ID is required for deletion");
     }
@@ -113,7 +111,6 @@ export const deleteTask = async (id: string, userId?: string) => {
     // Check if task exists and verify ownership
     const taskSnapshot = await getDoc(taskDocRef);
     if (!taskSnapshot.exists()) {
-      console.warn("⚠️ Task not found for deletion:", id);
       throw new Error("Task not found");
     }
 
@@ -121,28 +118,21 @@ export const deleteTask = async (id: string, userId?: string) => {
 
     // Verify user ownership if userId is provided
     if (userId && taskData.userId !== userId) {
-      console.warn("⚠️ User not authorized to delete this task:", id);
       throw new Error("Not authorized to delete this task");
     }
 
     // Remove from location monitoring if it exists
     try {
       LocationMonitoringService.removeTaskLocation(id);
-    } catch (locationError) {
-      console.warn(
-        "⚠️ Failed to remove from location monitoring:",
-        locationError
-      );
+    } catch {
       // Don't fail the deletion if location monitoring removal fails
     }
 
     // Delete the task
     await deleteDoc(taskDocRef);
-    console.log("✅ Task deleted successfully:", id);
 
     return { success: true, id };
   } catch (error) {
-    console.error("❌ Error in deleteTask:", error);
     throw error;
   }
 };

@@ -68,17 +68,6 @@ const Home = () => {
           .map((d) => ({ id: d.id, ...d.data() }) as Task)
           .filter((task) => task.userId === authUser?.uid);
 
-        console.log("🔥 Firebase tasks update:", {
-          totalDocs: snapshot.docs.length,
-          userTasks: allTasks.length,
-          userId: authUser?.uid,
-          tasks: allTasks.map((t) => ({
-            id: t.id,
-            title: t.title,
-            status: t.status,
-          })),
-        });
-
         setTasks(allTasks);
       },
       (err) => {
@@ -136,20 +125,6 @@ const Home = () => {
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Debug logging for completion rate
-  console.log("📊 Task Statistics Debug:", {
-    totalTasks,
-    completedTasks,
-    pendingTasks,
-    completionRate,
-    userId: authUser?.uid,
-    tasks: tasks.map((task) => ({
-      id: task.id,
-      title: task.title,
-      status: task.status,
-      userId: task.userId,
-    })),
-  });
-
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}

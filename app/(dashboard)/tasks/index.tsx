@@ -43,23 +43,12 @@ const TaskScreen = () => {
           .map((d) => ({ id: d.id, ...d.data() }) as Task)
           .filter((task) => task.userId === authUser?.uid);
 
-        console.log("📋 Task List Update:", {
-          totalDocs: snapshot.docs.length,
-          userTasks: allTasks.length,
-          userId: authUser?.uid,
-          tasks: allTasks.map((t) => ({
-            id: t.id,
-            title: t.title,
-            status: t.status,
-            userId: t.userId,
-          })),
-        });
-
         setTasks(allTasks);
         hideLoader();
       },
       (err) => {
-        console.log("Error listening:", err);
+        hideLoader();
+        Alert.alert("Error", "Failed to load tasks. Please try again.");
       }
     );
 
@@ -70,8 +59,7 @@ const TaskScreen = () => {
     try {
       showLoader();
       await toggleTaskStatus(taskId);
-    } catch (error) {
-      console.log("Error toggling task status:", error);
+    } catch {
       Alert.alert("Error", "Failed to update task status");
     } finally {
       hideLoader();
@@ -79,16 +67,11 @@ const TaskScreen = () => {
   };
 
   const handleDelete = async (id: string) => {
-    console.log("🎯 handleDelete called with ID:", id);
-    console.log("👤 Current user:", authUser?.uid);
-
     if (!authUser?.uid) {
-      console.error("❌ User not authenticated");
       Alert.alert("Error", "You must be logged in to delete tasks.");
       return;
     }
 
-    console.log("📱 Showing custom delete confirmation modal");
     setTaskToDelete(id);
     setShowDeleteModal(true);
   };
@@ -98,18 +81,10 @@ const TaskScreen = () => {
 
     try {
       showLoader();
-      console.log(
-        "🗑️ Deleting task with ID:",
-        taskToDelete,
-        "for user:",
-        authUser.uid
-      );
       await deleteTask(taskToDelete, authUser.uid);
-      console.log("✅ Task deleted successfully");
       setShowDeleteModal(false);
       setTaskToDelete(null);
     } catch (err) {
-      console.error("❌ Error deleting task:", err);
       const errorMessage =
         err instanceof Error ? err.message : "Failed to delete task";
       Alert.alert("Error", errorMessage + " Please try again.");
@@ -119,7 +94,6 @@ const TaskScreen = () => {
   };
 
   const cancelDelete = () => {
-    console.log("❌ Delete cancelled");
     setShowDeleteModal(false);
     setTaskToDelete(null);
   };
@@ -243,7 +217,6 @@ const TaskScreen = () => {
               </View>
             ) : (
               tasks.map((task) => {
-                console.log("🎯 Rendering task:", task.id, task.title);
                 return (
                   <View
                     key={task.id}
@@ -415,14 +388,9 @@ const TaskScreen = () => {
                               "🔥 Delete button pressed for task:",
                               task.id
                             );
-                            console.log("📋 Task object:", task);
                             if (task.id) {
-                              console.log(
-                                "✅ Task ID exists, calling handleDelete"
-                              );
                               handleDelete(task.id);
                             } else {
-                              console.error("❌ Task ID is missing!");
                               Alert.alert(
                                 "Error",
                                 "Cannot delete task: ID is missing"

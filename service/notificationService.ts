@@ -72,17 +72,15 @@ export class NotificationService {
     // Listen for notifications received while app is in foreground
     const foregroundSubscription =
       Notifications.addNotificationReceivedListener((notification) => {
-        console.log("Notification received in foreground:", notification);
+        // Handle foreground notifications
       });
 
     // Listen for notification responses (when user taps notification)
     const responseSubscription =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("Notification response:", response);
         const data = response.notification.request.content.data;
 
         if (data?.type === "task-reminder") {
-          console.log("Task reminder notification tapped:", data.taskTitle);
           // You can navigate to the task here if needed
         }
       });
@@ -108,7 +106,6 @@ export class NotificationService {
       }
 
       if (finalStatus !== "granted") {
-        console.log("Notification permission denied");
         return false;
       }
 
@@ -123,10 +120,8 @@ export class NotificationService {
         });
       }
 
-      console.log("Notification permissions granted");
       return true;
-    } catch (error) {
-      console.error("Error requesting notification permissions:", error);
+    } catch {
       return false;
     }
   }
@@ -143,9 +138,6 @@ export class NotificationService {
       // Check if notifications are enabled in user preferences
       const notificationsEnabled = await this.areNotificationsEnabled();
       if (!notificationsEnabled) {
-        console.log(
-          "🔕 Notifications disabled in settings - skipping immediate notification"
-        );
         return null;
       }
 
