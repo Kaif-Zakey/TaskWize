@@ -12,7 +12,6 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import LocationMonitoringService from "./locationMonitoringService";
 
 // tasks
 export const tasksRef = collection(db, "tasks");
@@ -121,12 +120,7 @@ export const deleteTask = async (id: string, userId?: string) => {
       throw new Error("Not authorized to delete this task");
     }
 
-    // Remove from location monitoring if it exists
-    try {
-      LocationMonitoringService.removeTaskLocation(id);
-    } catch {
-      // Don't fail the deletion if location monitoring removal fails
-    }
+    // Note: Location monitoring will automatically stop tracking this task when it's deleted
 
     // Delete the task
     await deleteDoc(taskDocRef);
@@ -152,26 +146,7 @@ export const updateTask = async (id: string, task: Task) => {
     )
   );
 
-  // Handle location monitoring based on task status and location settings
-  if (taskData.status === "completed") {
-    // Remove from location monitoring when completed
-    LocationMonitoringService.removeTaskLocation(id);
-  } else if (
-    taskData.status === "pending" &&
-    taskData.location &&
-    taskData.notifyOnLocation
-  ) {
-    // Add back to location monitoring when marked as pending with location settings
-    LocationMonitoringService.addTaskLocation({
-      id: id,
-      title: taskData.title,
-      latitude: taskData.location.latitude,
-      longitude: taskData.location.longitude,
-      range: taskData.location.range || 100,
-      address: taskData.location.address,
-      status: taskData.status,
-    });
-  }
+  // Note: Location monitoring will automatically handle task status changes in the next interval
 
   return updateDoc(taskDocRef, cleanedTask);
 };

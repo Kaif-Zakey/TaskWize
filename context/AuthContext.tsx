@@ -76,12 +76,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const initialized = await LocationMonitoringService.initialize();
             if (initialized) {
               console.log(
-                "📍 Location monitoring initialized, restoring tasks"
+                "📍 Location monitoring initialized, starting monitoring"
               );
-              // Restore tasks with location monitoring
-              await LocationMonitoringService.restoreTasksFromFirebase(
-                currentUser.uid
-              );
+              // Start monitoring immediately with the new approach
+              await LocationMonitoringService.startLocationMonitoring();
             } else {
               console.log("⚠️ Failed to initialize location monitoring");
             }
@@ -105,12 +103,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const initialized = await LocationMonitoringService.initialize();
             if (initialized) {
               console.log(
-                "📍 Location monitoring initialized on app start, restoring tasks"
+                "📍 Location monitoring initialized on app start, starting monitoring"
               );
-              // Restore tasks with location monitoring
-              await LocationMonitoringService.restoreTasksFromFirebase(
-                currentUser.uid
-              );
+              // Start monitoring immediately with the new approach
+              await LocationMonitoringService.startLocationMonitoring();
             } else {
               console.log(
                 "⚠️ Failed to initialize location monitoring on app start"

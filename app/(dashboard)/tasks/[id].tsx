@@ -3,7 +3,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
-import LocationMonitoringService from "@/service/locationMonitoringService";
 import { NotificationService } from "@/service/notificationService";
 import {
   createTask,
@@ -225,16 +224,7 @@ const TaskFormScreen = () => {
               notificationRange
             );
 
-            // Add task to location monitoring service
-            LocationMonitoringService.addTaskLocation({
-              id: newTaskId,
-              title: title,
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              range: notificationRange,
-              address: location || "Unknown location",
-              status: "pending", // New tasks start as pending
-            });
+            // Note: Location monitoring will automatically pick up this task in the next interval
           } catch {
             // Location monitoring setup failed, but task was created successfully
             // Continue with success flow
@@ -297,16 +287,7 @@ const TaskFormScreen = () => {
                 0.1 // 6 seconds for immediate testing
               );
 
-              // Add updated task to location monitoring service
-              LocationMonitoringService.addTaskLocation({
-                id: id!,
-                title: title,
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                range: notificationRange,
-                address: location || "Unknown location",
-                status: existingTask.status || "pending", // Use existing status or default to pending
-              });
+              // Note: Location monitoring will automatically pick up the updated task in the next interval
             } catch {
               // Notification setup failed, but task was updated successfully
               // Continue with success flow
