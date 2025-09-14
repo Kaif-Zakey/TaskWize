@@ -18,6 +18,8 @@ interface TaskLocation {
 // Define the background task at module level with error handling
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
   try {
+    console.log("🔄 Background location task triggered");
+
     // Check if user is authenticated before processing location updates
     if (!auth.currentUser) {
       console.log("👤 User not authenticated, skipping location monitoring");
@@ -37,6 +39,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
         console.log("📍 Background location update:", {
           lat: location.coords.latitude.toFixed(6),
           lng: location.coords.longitude.toFixed(6),
+          timestamp: new Date().toISOString(),
         });
 
         // Call the static method to check proximity
@@ -44,7 +47,11 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         });
+      } else {
+        console.log("⚠️ No location data in background task");
       }
+    } else {
+      console.log("⚠️ No location data received in background task");
     }
   } catch (taskError) {
     console.error("❌ Error in background location task:", taskError);
@@ -165,6 +172,50 @@ class LocationMonitoringService {
   }
 
   /**
+   * Restore tasks with location monitoring from Firebase when user logs in
+   */
+  static async restoreTasksFromFirebase(userId: string) {
+    try {
+      console.log("🔄 Restoring tasks with location monitoring from Firebase");
+
+      // Import task service here to avoid circular dependency
+      const { getAllTaskByUserId } = await import("./taskService");
+
+      // Get all user tasks
+      const allTasks = await getAllTaskByUserId(userId);
+
+      // Filter tasks that need location monitoring
+      const tasksWithLocation = allTasks.filter(
+        (task) =>
+          task.status === "pending" && task.location && task.notifyOnLocation
+      );
+
+      console.log(
+        `📍 Found ${tasksWithLocation.length} pending tasks with location monitoring`
+      );
+
+      // Add each task to location monitoring
+      for (const task of tasksWithLocation) {
+        if (task.location && task.id) {
+          this.addTaskLocation({
+            id: task.id,
+            title: task.title,
+            latitude: task.location.latitude,
+            longitude: task.location.longitude,
+            range: task.location.range || 100,
+            address: task.location.address,
+            status: task.status as "pending" | "completed",
+          });
+        }
+      }
+
+      console.log("✅ Task restoration completed");
+    } catch (error) {
+      console.error("❌ Error restoring tasks from Firebase:", error);
+    }
+  }
+
+  /**
    * Check if the service is ready to use
    */
   static isReady(): boolean {
@@ -227,6 +278,15 @@ class LocationMonitoringService {
     // Check if user is authenticated before processing proximity checks
     if (!auth.currentUser) {
       console.log("👤 User not authenticated, skipping proximity checks");
+      return;
+    }
+
+    console.log(
+      `🔍 Checking proximity for ${this.trackedTasks.length} tracked tasks`
+    );
+
+    if (this.trackedTasks.length === 0) {
+      console.log("📍 No tasks being tracked for location monitoring");
       return;
     }
 

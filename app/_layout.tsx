@@ -2,7 +2,6 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LoaderProvider } from "@/context/LoaderContext";
 import { PreferencesProvider } from "@/context/PreferencesContext";
 import { ThemeProvider } from "@/context/ThemeContext";
-import LocationMonitoringService from "@/service/locationMonitoringService";
 import { NotificationService } from "@/service/notificationService";
 import { Slot } from "expo-router";
 import React, { useEffect } from "react";
@@ -23,25 +22,7 @@ const RootLayout = () => {
       }
     };
 
-    // Initialize location monitoring service (only if user is authenticated)
-    const setupLocationMonitoring = async () => {
-      try {
-        // Note: Location monitoring will check authentication status during initialization
-        const initialized = await LocationMonitoringService.initialize();
-        if (initialized) {
-          console.log("✅ Location monitoring service initialized");
-        } else {
-          console.log(
-            "⚠️ Location monitoring service could not be initialized (user may not be authenticated)"
-          );
-        }
-      } catch (error) {
-        console.error("❌ Error setting up location monitoring:", error);
-      }
-    };
-
     setupNotifications();
-    setupLocationMonitoring();
 
     // Setup notification listeners
     const cleanup = NotificationService.setupNotificationListeners();

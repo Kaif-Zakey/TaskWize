@@ -15,5 +15,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Firebase automatically persists authentication state in React Native
+// The auth state is automatically persisted using AsyncStorage
 export const auth = getAuth(app);
 export const db = getFirestore(app);

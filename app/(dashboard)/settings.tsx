@@ -332,6 +332,58 @@ To remove test task, toggle Location Services off and on.`,
     }
   };
 
+  // Debug authentication persistence on Android
+  const debugAuthPersistence = async () => {
+    try {
+      showLoader();
+
+      console.log("🔍 === Auth Debug Info ===");
+
+      // Check Firebase auth state
+      const currentUser = auth.currentUser;
+      console.log("Firebase current user:", currentUser?.uid);
+      console.log("User email:", currentUser?.email);
+
+      // Check AsyncStorage data
+      const savedPreferences = await AsyncStorage.getItem("appPreferences");
+      console.log(
+        "Saved preferences:",
+        savedPreferences ? "Found" : "Not found"
+      );
+
+      const userProfile = await AsyncStorage.getItem("userProfile");
+      console.log("User profile:", userProfile ? "Found" : "Not found");
+
+      // Check location monitoring status
+      const locationStatus = LocationMonitoringService.getStatus();
+      console.log("Location monitoring status:", locationStatus);
+
+      // Get all AsyncStorage keys
+      const keys = await AsyncStorage.getAllKeys();
+      console.log("AsyncStorage keys:", keys);
+
+      Alert.alert(
+        "Auth Debug Results",
+        `Authentication Status:
+• Firebase User: ${currentUser ? "✅ Logged in" : "❌ Not logged in"}
+• User ID: ${currentUser?.uid || "None"}
+• Email: ${currentUser?.email || "None"}
+• Preferences: ${savedPreferences ? "✅ Saved" : "❌ Missing"}
+• Profile: ${userProfile ? "✅ Saved" : "❌ Missing"}
+• Location Service: ${locationStatus.authenticated ? "✅ Ready" : "❌ Not authenticated"}
+• AsyncStorage Keys: ${keys.length}
+
+Check console logs for detailed information.`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Auth debug error:", error);
+      Alert.alert("Debug Error", "Failed to retrieve debug information");
+    } finally {
+      hideLoader();
+    }
+  };
+
   const clearAppData = () => {
     Alert.alert(
       "Clear App Data",
@@ -901,6 +953,15 @@ Sent from TaskWize Mobile App
           >
             <Text className="text-white text-lg font-semibold">
               Test Location Monitoring
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="mx-6 py-4 bg-purple-500 rounded-lg items-center mb-4"
+            onPress={debugAuthPersistence}
+          >
+            <Text className="text-white text-lg font-semibold">
+              Debug Auth Persistence
             </Text>
           </TouchableOpacity>
         </View>
