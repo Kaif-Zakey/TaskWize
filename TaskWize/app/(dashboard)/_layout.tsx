@@ -32,7 +32,7 @@ const DashboardLayout = () => {
           name={name}
           options={{
             title: label,
-            tabBarIcon: ({ color, size }) => (
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
               <MaterialIcons name={icon} color={color} size={size} />
             ),
           }}

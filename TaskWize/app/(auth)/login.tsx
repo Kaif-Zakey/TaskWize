@@ -83,6 +83,10 @@ const Login = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    router.push("/forgot-password");
+  };
+
   return (
     <View style={styles.container}>
       {/* Custom Background */}
@@ -211,6 +215,16 @@ const Login = () => {
                     </>
                   )}
                 </TouchableOpacity>
+
+                {/* Forgot Password Link */}
+                <Pressable
+                  onPress={handleForgotPassword}
+                  style={styles.forgotPasswordLink}
+                >
+                  <Text style={styles.forgotPasswordText}>
+                    Forgot Password?
+                  </Text>
+                </Pressable>
 
                 {/* Register Link */}
                 <Pressable
@@ -404,6 +418,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     marginRight: 10,
+  },
+  forgotPasswordLink: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  forgotPasswordText: {
+    color: "#8b5cf6",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
   },
   registerLink: {
     marginTop: 32,
