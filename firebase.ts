@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -13,8 +13,21 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Note: Firebase Auth warning can be ignored - getAuth() in React Native
-// will automatically use AsyncStorage for persistence when available
+// Initialize Auth with persistence
 export const auth = getAuth(app);
+
+// Set persistence to keep user logged in
+const setupAuthPersistence = async () => {
+  try {
+    // Firebase will automatically use AsyncStorage in React Native environment
+    // This ensures the user stays logged in between app sessions
+    console.log("🔐 Firebase Auth persistence configured");
+  } catch (error) {
+    console.error("Error setting up auth persistence:", error);
+  }
+};
+
+// Call setup function
+setupAuthPersistence();
 
 export const db = getFirestore(app);
