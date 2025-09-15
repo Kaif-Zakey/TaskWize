@@ -1,36 +1,17 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from "expo-av";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 // Helper function to check notification preferences (outside of class to avoid circular reference)
 const areNotificationsEnabledGlobal = async (): Promise<boolean> => {
-  try {
-    const savedPreferences = await AsyncStorage.getItem("appPreferences");
-    if (savedPreferences) {
-      const preferences = JSON.parse(savedPreferences);
-      return preferences.notifications === true;
-    }
-    return true;
-  } catch (error) {
-    console.error("Error checking notification preferences:", error);
-    return true;
-  }
+  // Always return true to ensure notifications are always enabled
+  return true;
 };
 
 // Helper function to check sound effects preferences
 const areSoundEffectsEnabledGlobal = async (): Promise<boolean> => {
-  try {
-    const savedPreferences = await AsyncStorage.getItem("appPreferences");
-    if (savedPreferences) {
-      const preferences = JSON.parse(savedPreferences);
-      return preferences.soundEffects === true;
-    }
-    return true;
-  } catch (error) {
-    console.error("Error checking sound effects preferences:", error);
-    return true;
-  }
+  // Always return true to ensure sound effects are always enabled
+  return true;
 };
 
 // Configure notification handler

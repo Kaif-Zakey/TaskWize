@@ -13,7 +13,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Auth - should automatically detect AsyncStorage in React Native
+// Note: Firebase Auth warning can be ignored - getAuth() in React Native
+// will automatically use AsyncStorage for persistence when available
 export const auth = getAuth(app);
 
 export const db = getFirestore(app);
