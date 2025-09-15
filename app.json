@@ -43,7 +43,7 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "package": "com.kaif_zaki.TaskWize"
+      "package": "com.kaifzakey.TaskWize"
     },
     "web": {
       "bundler": "metro",
@@ -102,12 +102,6 @@
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "412ce445-5157-4e8c-83e3-841fc629be24"
-      }
     }
   }
 }
