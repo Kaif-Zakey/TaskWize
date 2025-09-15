@@ -27,6 +27,7 @@ import {
 const TaskFormScreen = () => {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isNew = !id || id === "new";
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(!isNew);
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [category, setCategory] = useState<string>("");
@@ -56,6 +57,7 @@ const TaskFormScreen = () => {
     const load = async () => {
       if (!isNew && id) {
         try {
+          setIsInitialLoading(true);
           showLoader();
           const task = await getTaskById(id);
           if (task) {
@@ -71,9 +73,17 @@ const TaskFormScreen = () => {
                 longitude: task.location.longitude,
               });
               setNotificationRange(task.location.range || 100);
+              // Set selected location data for editing
+              setSelectedLocationData({
+                latitude: task.location.latitude,
+                longitude: task.location.longitude,
+                address: task.location.address || "",
+                name: task.location.name || "",
+              });
             }
           }
         } finally {
+          setIsInitialLoading(false);
           hideLoader();
         }
       } else if (isNew) {
@@ -84,6 +94,7 @@ const TaskFormScreen = () => {
         } catch {
           setCategory("Work"); // Fallback
         }
+        setIsInitialLoading(false);
       }
     };
     load();
@@ -320,6 +331,24 @@ const TaskFormScreen = () => {
     { label: "Medium", value: "medium", color: colors.warning || "#F59E0B" },
     { label: "High", value: "high", color: colors.error || "#EF4444" },
   ];
+
+  // Show loading indicator while initially loading task data
+  if (isInitialLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: colors.text, fontSize: 16 }}>
+          Loading task...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <>

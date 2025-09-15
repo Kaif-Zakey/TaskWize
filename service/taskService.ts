@@ -61,9 +61,38 @@ export const createTask = async (task: Task) => {
     finalCategory = await getDefaultTaskCategory();
   }
 
+  // Normalize location data structure
+  let normalizedLocation = null;
+  if (task.location) {
+    // Handle potential coords structure from LocationPicker
+    const taskLocationAny = task.location as any;
+    if (taskLocationAny.coords) {
+      // Handle location data coming from LocationPicker with coords structure
+      normalizedLocation = {
+        latitude: taskLocationAny.coords.latitude,
+        longitude: taskLocationAny.coords.longitude,
+        range: task.location.range || 100,
+        address: task.location.address || "",
+        name: task.location.name || "",
+      };
+    } else if (task.location.latitude && task.location.longitude) {
+      // Handle location data already in correct format
+      normalizedLocation = {
+        latitude: task.location.latitude,
+        longitude: task.location.longitude,
+        range: task.location.range || 100,
+        address: task.location.address || "",
+        name: task.location.name || "",
+      };
+    }
+  }
+
   const taskWithTimestamps = {
     ...task,
     category: finalCategory,
+    location: normalizedLocation,
+    notifyOnLocation:
+      task.notifyOnLocation ?? (normalizedLocation ? true : false),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     status: task.status || "pending",
@@ -134,8 +163,37 @@ export const deleteTask = async (id: string, userId?: string) => {
 export const updateTask = async (id: string, task: Task) => {
   const taskDocRef = doc(db, "tasks", id);
   const { id: _id, ...taskData } = task; // remove id
+
+  // Normalize location data structure for updates too
+  let normalizedLocation = taskData.location;
+  if (taskData.location) {
+    const taskLocationAny = taskData.location as any;
+    if (taskLocationAny.coords) {
+      // Handle location data coming from LocationPicker with coords structure
+      normalizedLocation = {
+        latitude: taskLocationAny.coords.latitude,
+        longitude: taskLocationAny.coords.longitude,
+        range: taskData.location.range || 100,
+        address: taskData.location.address || "",
+        name: taskData.location.name || "",
+      };
+    } else if (taskData.location.latitude && taskData.location.longitude) {
+      // Already in correct format
+      normalizedLocation = {
+        latitude: taskData.location.latitude,
+        longitude: taskData.location.longitude,
+        range: taskData.location.range || 100,
+        address: taskData.location.address || "",
+        name: taskData.location.name || "",
+      };
+    }
+  }
+
   const taskWithTimestamp = {
     ...taskData,
+    location: normalizedLocation,
+    notifyOnLocation:
+      taskData.notifyOnLocation ?? (normalizedLocation ? true : false),
     updatedAt: new Date().toISOString(),
   };
 

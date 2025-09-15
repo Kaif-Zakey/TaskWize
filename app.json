@@ -32,6 +32,7 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -78,15 +79,13 @@
         {
           "icon": "./assets/images/Icon.png",
           "color": "#ffffff",
-          "sounds": [
-            "./assets/sound/notification.wav"
-          ]
+          "sounds": ["./assets/sound/notification.wav"]
         }
       ],
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/Icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -95,10 +94,7 @@
       [
         "expo-maps",
         {
-          "providers": [
-            "google",
-            "apple"
-          ]
+          "providers": ["google", "apple"]
         }
       ],
       "expo-font"

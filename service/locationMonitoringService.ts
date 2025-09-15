@@ -1,26 +1,80 @@
 ﻿import { auth } from "@/firebase";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
+import * as TaskManager from "expo-task-manager";
 import { NotificationService } from "./notificationService";
+
+const LOCATION_TASK_NAME = "TASKWIZE_LOCATION_TRACKING";
+
+// Define the background task at module level
+TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
+  try {
+    console.log("🔄 Background location task triggered");
+
+    if (error) {
+      console.error("❌ Background location task error:", error);
+      return;
+    }
+
+    // Check if user is still authenticated
+    if (!auth.currentUser) {
+      console.log("👤 User not authenticated in background task");
+      return;
+    }
+
+    if (data && data.locations) {
+      const { locations } = data;
+      const location = locations[0];
+
+      if (location && location.coords) {
+        console.log("📍 Background location update:", {
+          lat: location.coords.latitude.toFixed(6),
+          lng: location.coords.longitude.toFixed(6),
+          timestamp: new Date().toISOString(),
+        });
+
+        // Check proximity to tasks in background
+        await LocationMonitoringService.checkProximityInBackground(
+          location.coords
+        );
+      }
+    }
+  } catch (taskError) {
+    console.error("❌ Error in background location task:", taskError);
+  }
+});
 
 class LocationMonitoringService {
   private static isInitialized = false;
   private static isMonitoring = false;
-  private static monitoringInterval: ReturnType<typeof setInterval> | null =
-    null;
   private static lastNotifiedTasks: Set<string> = new Set();
 
   static async initialize(): Promise<boolean> {
+    console.log("🚀 Initializing location monitoring service");
     if (!auth.currentUser) return false;
 
     try {
+      // Request foreground location permissions
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return false;
+      if (status !== "granted") {
+        console.log("📍 Foreground location permission denied");
+        return false;
+      }
 
-      await Location.requestBackgroundPermissionsAsync();
+      // Request background location permissions (essential for background tracking)
+      const { status: backgroundStatus } =
+        await Location.requestBackgroundPermissionsAsync();
+      if (backgroundStatus !== "granted") {
+        console.log(
+          "⚠️ Background location permission denied - notifications may not work when app is closed"
+        );
+      }
+
       this.isInitialized = true;
+      console.log("✅ Location monitoring initialized successfully");
       return true;
-    } catch {
+    } catch (error) {
+      console.error("❌ Failed to initialize location monitoring:", error);
       return false;
     }
   }
@@ -28,25 +82,83 @@ class LocationMonitoringService {
   static async startLocationMonitoring(): Promise<void> {
     if (!this.isInitialized || this.isMonitoring) return;
 
-    this.monitoringInterval = setInterval(async () => {
-      await this.checkLocationAndTasks();
-    }, 60000);
+    try {
+      console.log("🚀 Starting background location monitoring");
 
-    this.isMonitoring = true;
+      // Start background location updates using TaskManager
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 30000, // Check every 30 seconds
+        distanceInterval: 50, // Check when user moves 50+ meters
+        showsBackgroundLocationIndicator: true, // iOS only
+        foregroundService: {
+          notificationTitle: "TaskWize Location Tracking",
+          notificationBody:
+            "Tracking your location to notify you about nearby tasks",
+          notificationColor: "#4285F4",
+        },
+      });
+
+      this.isMonitoring = true;
+      console.log("✅ Background location monitoring started");
+
+      // Also do an immediate check
+      await this.checkLocationAndTasks();
+    } catch (error) {
+      console.error(
+        "❌ Failed to start background location monitoring:",
+        error
+      );
+    }
   }
 
-  static stopLocationMonitoring(): void {
-    if (this.monitoringInterval) {
-      clearInterval(this.monitoringInterval);
-      this.monitoringInterval = null;
+  static async stopLocationMonitoring(): Promise<void> {
+    try {
+      if (this.isMonitoring) {
+        await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+        this.isMonitoring = false;
+        this.lastNotifiedTasks.clear();
+        console.log("🛑 Background location monitoring stopped");
+      }
+    } catch (error) {
+      console.error("❌ Error stopping location monitoring:", error);
     }
-    this.isMonitoring = false;
-    this.lastNotifiedTasks.clear();
+  }
+
+  // Background proximity checking method called from TaskManager
+  static async checkProximityInBackground(userCoords: any): Promise<void> {
+    try {
+      console.log("🔍 Background proximity check");
+
+      if (!auth.currentUser) {
+        console.log("👤 User not authenticated in background");
+        return;
+      }
+
+      const incompleteTasks =
+        await LocationMonitoringService.getIncompleteTasksWithLocation();
+      console.log(
+        `📋 Background check: Found ${incompleteTasks.length} tasks with location`
+      );
+
+      for (const task of incompleteTasks) {
+        await LocationMonitoringService.checkProximityToTask(
+          userCoords,
+          task,
+          true
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error in background proximity check:", error);
+    }
   }
 
   private static async checkLocationAndTasks(): Promise<void> {
     try {
+      console.log("🔍 Checking location and tasks...");
+
       if (!auth.currentUser) {
+        console.log("👤 User not authenticated, stopping location monitoring");
         this.stopLocationMonitoring();
         return;
       }
@@ -55,13 +167,27 @@ class LocationMonitoringService {
         accuracy: Location.Accuracy.Balanced,
       });
 
+      console.log("📍 Current location:", {
+        lat: location.coords.latitude.toFixed(6),
+        lng: location.coords.longitude.toFixed(6),
+        timestamp: new Date().toISOString(),
+      });
+
       const incompleteTasks = await this.getIncompleteTasksWithLocation();
+      console.log(
+        `📋 Found ${incompleteTasks.length} incomplete tasks with location settings`
+      );
+
+      if (incompleteTasks.length === 0) {
+        console.log("⚠️ No tasks with location monitoring found");
+        return;
+      }
 
       for (const task of incompleteTasks) {
         await this.checkProximityToTask(location.coords, task);
       }
     } catch (error) {
-      console.error("Location check error:", error);
+      console.error("❌ Error checking location and tasks:", error);
     }
   }
 
@@ -71,60 +197,174 @@ class LocationMonitoringService {
       if (!auth.currentUser) return [];
 
       const allTasks = await getAllTaskByUserId(auth.currentUser.uid);
-      return allTasks.filter(
-        (task) =>
-          task.status === "pending" &&
-          task.location &&
-          task.notifyOnLocation &&
-          task.location.latitude &&
-          task.location.longitude
+
+      // Filter tasks with defensive location checking
+      const filteredTasks = allTasks.filter((task) => {
+        // Must be pending and have location monitoring enabled
+        if (task.status !== "pending" || !task.notifyOnLocation) {
+          return false;
+        }
+
+        // Check for location data in various structures
+        let lat, lng;
+        if (task.location) {
+          // Handle direct latitude/longitude structure
+          if (task.location.latitude && task.location.longitude) {
+            lat = task.location.latitude;
+            lng = task.location.longitude;
+          }
+          // Handle coords structure (fallback for old data)
+          else {
+            const locationAny = task.location as any;
+            if (locationAny.coords?.latitude && locationAny.coords?.longitude) {
+              lat = locationAny.coords.latitude;
+              lng = locationAny.coords.longitude;
+            }
+          }
+        }
+
+        const hasValidLocation =
+          lat && lng && typeof lat === "number" && typeof lng === "number";
+
+        if (!hasValidLocation) {
+          console.log(
+            `⚠️ Task "${task.title}" has invalid location data:`,
+            task.location
+          );
+          return false;
+        }
+
+        return true;
+      });
+
+      console.log(
+        `📋 Found ${filteredTasks.length} tasks with valid location data out of ${allTasks.length} total tasks`
       );
-    } catch {
+      return filteredTasks;
+    } catch (error) {
+      console.error("❌ Error fetching tasks with location:", error);
       return [];
     }
   }
 
   private static async checkProximityToTask(
     userCoords: any,
-    task: any
+    task: any,
+    isBackground: boolean = false
   ): Promise<void> {
-    const distance = this.calculateDistance(
-      userCoords.latitude,
-      userCoords.longitude,
-      task.location.latitude,
-      task.location.longitude
-    );
+    try {
+      // Get task location coordinates defensively
+      let taskLat, taskLng, taskRange;
 
-    const taskRange = task.location.range || 100;
+      if (task.location) {
+        // Handle direct latitude/longitude structure
+        if (task.location.latitude && task.location.longitude) {
+          taskLat = task.location.latitude;
+          taskLng = task.location.longitude;
+          taskRange = task.location.range || 100;
+        }
+        // Handle coords structure (fallback for old data)
+        else {
+          const locationAny = task.location as any;
+          if (locationAny.coords?.latitude && locationAny.coords?.longitude) {
+            taskLat = locationAny.coords.latitude;
+            taskLng = locationAny.coords.longitude;
+            taskRange = task.location.range || 100;
+          }
+        }
+      }
 
-    if (distance <= taskRange && !this.lastNotifiedTasks.has(task.id)) {
-      await this.sendLocationNotification(task, distance);
-      this.lastNotifiedTasks.add(task.id);
-      setTimeout(() => this.lastNotifiedTasks.delete(task.id), 300000);
+      if (!taskLat || !taskLng) {
+        console.log(
+          `⚠️ ${isBackground ? "[BG]" : "[FG]"} Task "${task.title}" has invalid location coordinates`
+        );
+        return;
+      }
+
+      const distance = this.calculateDistance(
+        userCoords.latitude,
+        userCoords.longitude,
+        taskLat,
+        taskLng
+      );
+
+      console.log(
+        `📏 ${isBackground ? "[BG]" : "[FG]"} Task "${task.title}": ${Math.round(distance)}m away (range: ${taskRange}m)`
+      );
+
+      if (distance <= taskRange) {
+        console.log(
+          `🎯 ${isBackground ? "[BG]" : "[FG]"} User is within range of task: "${task.title}"`
+        );
+
+        if (!this.lastNotifiedTasks.has(task.id)) {
+          console.log(
+            `🔔 ${isBackground ? "[BG]" : "[FG]"} Sending notification for task: "${task.title}"`
+          );
+          await this.sendLocationNotification(task, distance, isBackground);
+          this.lastNotifiedTasks.add(task.id);
+          setTimeout(() => this.lastNotifiedTasks.delete(task.id), 300000);
+        } else {
+          console.log(
+            `⏰ ${isBackground ? "[BG]" : "[FG]"} Already notified about "${task.title}" recently, skipping`
+          );
+        }
+      } else {
+        console.log(
+          `📍 ${isBackground ? "[BG]" : "[FG]"} Task "${task.title}" is outside range (${Math.round(distance)}m > ${taskRange}m)`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `❌ Error checking proximity for task "${task.title}":`,
+        error
+      );
     }
   }
 
   private static async sendLocationNotification(
     task: any,
-    distance: number
+    distance: number,
+    isBackground: boolean = false
   ): Promise<void> {
     try {
-      const soundEnabled = await NotificationService.areSoundEffectsEnabled();
-      if (soundEnabled) {
-        await NotificationService.playDirectSound();
+      console.log(
+        `🔔 ${isBackground ? "[BG]" : "[FG]"} Preparing location notification for task: "${task.title}"`
+      );
+
+      // In background mode, we can't play sounds through NotificationService
+      // but we can include sound in the notification itself
+      let soundEnabled = false;
+      if (!isBackground) {
+        soundEnabled = await NotificationService.areSoundEffectsEnabled();
+        if (soundEnabled) {
+          console.log("🔊 Playing location sound alert");
+          await NotificationService.playDirectSound();
+        }
+      } else {
+        // For background notifications, always try to include sound
+        soundEnabled = true;
       }
 
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "📍 Task Location Alert",
           body: `You're near "${task.title}" (${Math.round(distance)}m away)`,
-          data: { taskId: task.id, type: "location-proximity" },
+          data: {
+            taskId: task.id,
+            type: "location-proximity",
+            isBackground: isBackground,
+          },
           sound: soundEnabled ? "notification.wav" : undefined,
         },
         trigger: null,
       });
+
+      console.log(
+        `✅ ${isBackground ? "[BG]" : "[FG]"} Location notification sent for task: "${task.title}"`
+      );
     } catch (error) {
-      console.error("Notification error:", error);
+      console.error("❌ Error sending notification:", error);
     }
   }
 
@@ -159,7 +399,14 @@ class LocationMonitoringService {
     };
   }
 
+  // Debug method to manually trigger location check
+  static async debugLocationCheck(): Promise<void> {
+    console.log("🔧 Manual location check triggered");
+    await this.checkLocationAndTasks();
+  }
+
   static handleUserLogout(): void {
+    console.log("👋 Handling user logout - stopping location monitoring");
     this.stopLocationMonitoring();
     this.isInitialized = false;
     this.lastNotifiedTasks.clear();
