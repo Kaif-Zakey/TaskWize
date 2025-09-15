@@ -82,7 +82,9 @@
         {
           "icon": "./assets/images/Icon.png",
           "color": "#ffffff",
-          "sounds": ["./assets/sound/notification.wav"]
+          "sounds": [
+            "./assets/sound/notification.wav"
+          ]
         }
       ],
       [
@@ -97,13 +99,22 @@
       [
         "expo-maps",
         {
-          "providers": ["google", "apple"]
+          "providers": [
+            "google",
+            "apple"
+          ]
         }
       ],
       "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4ea9f031-d445-446a-9f37-3ae3670997f4"
+      }
     }
   }
 }
