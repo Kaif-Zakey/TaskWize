@@ -192,6 +192,23 @@ class LocationMonitoringService {
 
     this.isMonitoring = true;
     console.log("✅ Foreground location monitoring started");
+
+    // Test notification to verify notifications work in Expo Go
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🔄 Location Monitoring Active",
+          body: "TaskWize is now monitoring your location for nearby tasks",
+          data: { type: "test" },
+        },
+        trigger: null,
+      });
+      console.log(
+        "✅ Test notification sent - should appear if notifications work"
+      );
+    } catch (error) {
+      console.log("❌ Test notification failed:", error);
+    }
   }
 
   static async stopLocationMonitoring(): Promise<void> {
@@ -413,7 +430,7 @@ class LocationMonitoringService {
             type: "location-proximity",
             isBackground: isBackground,
           },
-          sound: soundEnabled ? "notification.wav" : undefined,
+          ...(soundEnabled && { sound: "notification.wav" }),
         },
         trigger: null,
       });

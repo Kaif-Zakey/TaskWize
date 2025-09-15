@@ -15,11 +15,13 @@ const AuthContext = createContext<{
   loading: boolean;
   logout: () => Promise<void>;
   isInitializing: boolean;
+  initializeLocationMonitoring: () => Promise<void>;
 }>({
   user: null,
   loading: true,
   logout: async () => {},
   isInitializing: true,
+  initializeLocationMonitoring: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -37,6 +39,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await signOut(auth);
     } catch {
       // Silent error handling in production
+    }
+  };
+
+  const initializeLocationMonitoring = async () => {
+    if (!user) return;
+
+    console.log("👤 User authenticated, setting up location monitoring");
+    try {
+      const initialized = await LocationMonitoringService.initialize();
+      if (initialized) {
+        console.log("📍 Location monitoring initialized, starting monitoring");
+        await LocationMonitoringService.startLocationMonitoring();
+      } else {
+        console.log("⚠️ Failed to initialize location monitoring");
+      }
+    } catch (error) {
+      console.error("Error setting up location monitoring:", error);
     }
   };
 
@@ -69,25 +88,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Handle location monitoring for authenticated users
       if (isNowLoggedIn) {
         console.log("👤 User authenticated, setting up location monitoring");
-        try {
-          // Add a delay to ensure auth state is stable
-          setTimeout(
-            async () => {
-              const initialized = await LocationMonitoringService.initialize();
-              if (initialized) {
-                console.log(
-                  "📍 Location monitoring initialized, starting monitoring"
-                );
-                await LocationMonitoringService.startLocationMonitoring();
-              } else {
-                console.log("⚠️ Failed to initialize location monitoring");
-              }
-            },
-            isInitializing ? 2000 : 1000
-          ); // Longer delay on app start
-        } catch (error) {
-          console.error("Error setting up location monitoring:", error);
-        }
+        // We no longer start location monitoring here automatically
+        // It will be triggered from the home/tasks screens after tasks are loaded
       }
 
       // Handle location monitoring cleanup when user logs out
@@ -110,7 +112,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isInitializing]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, isInitializing }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        logout,
+        isInitializing,
+        initializeLocationMonitoring,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

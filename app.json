@@ -12,7 +12,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.kaifzakey.TaskWize",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to track tasks and send proximity notifications.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to track tasks and send proximity notifications even when the app is in the background."
       },
       "config": {
         "googleMapsApiKey": "AIzaSyBhfVxN_UTEN4qh0if5Az_dbvyeB632NkA"
@@ -80,9 +82,7 @@
         {
           "icon": "./assets/images/Icon.png",
           "color": "#ffffff",
-          "sounds": [
-            "./assets/sound/notification.wav"
-          ]
+          "sounds": ["./assets/sound/notification.wav"]
         }
       ],
       [
@@ -97,10 +97,7 @@
       [
         "expo-maps",
         {
-          "providers": [
-            "google",
-            "apple"
-          ]
+          "providers": ["google", "apple"]
         }
       ],
       "expo-font"

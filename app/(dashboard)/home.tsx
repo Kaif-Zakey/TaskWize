@@ -14,8 +14,12 @@ const Home = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [user, setUser] = useState<any>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [
+    hasInitializedLocationMonitoring,
+    setHasInitializedLocationMonitoring,
+  ] = useState(false);
   const router = useRouter();
-  const { user: authUser } = useAuth();
+  const { user: authUser, initializeLocationMonitoring } = useAuth();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -69,6 +73,16 @@ const Home = () => {
           .filter((task) => task.userId === authUser?.uid);
 
         setTasks(allTasks);
+
+        // Initialize location monitoring after tasks are loaded (only once)
+        if (allTasks.length >= 0 && !hasInitializedLocationMonitoring) {
+          setHasInitializedLocationMonitoring(true);
+          setTimeout(() => {
+            initializeLocationMonitoring().catch((error: any) => {
+              console.error("Error initializing location monitoring:", error);
+            });
+          }, 1000); // Small delay to ensure tasks are fully processed
+        }
       },
       (err) => {
         console.error("Error listening to tasks:", err);
@@ -76,7 +90,11 @@ const Home = () => {
     );
 
     return () => unsubscribe();
-  }, [authUser?.uid]); // Only depend on the uid, not the whole user object
+  }, [
+    authUser?.uid,
+    hasInitializedLocationMonitoring,
+    initializeLocationMonitoring,
+  ]);
 
   // Calculate statistics
   const totalTasks = tasks.length;
