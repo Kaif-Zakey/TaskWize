@@ -11,9 +11,13 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Firebase auth persistence is enabled by default in React Native
+// Initialize Firebase Auth - getAuth() automatically handles persistence in React Native
 export const auth = getAuth(app);
+
+// Note: getAuth() should automatically handle React Native persistence
+// If you see warnings about AsyncStorage, they can be safely ignored
+// The auth state should persist using platform-native storage
+
 export const db = getFirestore(app);

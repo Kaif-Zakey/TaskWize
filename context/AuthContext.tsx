@@ -48,8 +48,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       console.log(
         "🔄 Auth state changed:",
-        currentUser ? "User logged in" : "User logged out"
+        currentUser ? `User logged in: ${currentUser.uid}` : "User logged out"
       );
+
+      // Debug: Check if this is a restored session
+      if (currentUser && isInitializing) {
+        console.log("🔄 User session restored from persistence!");
+      }
 
       const previousUser = previousUserRef.current;
       const wasLoggedIn = previousUser !== null;
@@ -61,70 +66,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(currentUser ?? null);
       setLoading(false);
 
-      // Mark initialization as complete once we get the first auth state
+      // Handle location monitoring for authenticated users
+      if (isNowLoggedIn) {
+        console.log("👤 User authenticated, setting up location monitoring");
+        try {
+          // Add a delay to ensure auth state is stable
+          setTimeout(
+            async () => {
+              const initialized = await LocationMonitoringService.initialize();
+              if (initialized) {
+                console.log(
+                  "📍 Location monitoring initialized, starting monitoring"
+                );
+                await LocationMonitoringService.startLocationMonitoring();
+              } else {
+                console.log("⚠️ Failed to initialize location monitoring");
+              }
+            },
+            isInitializing ? 2000 : 1000
+          ); // Longer delay on app start
+        } catch (error) {
+          console.error("Error setting up location monitoring:", error);
+        }
+      }
+
+      // Handle location monitoring cleanup when user logs out
+      if (wasLoggedIn && !isNowLoggedIn) {
+        console.log("� User logged out, cleaning up location monitoring");
+        LocationMonitoringService.handleUserLogout();
+      }
+
+      // Mark initialization as complete
       if (isInitializing) {
         setIsInitializing(false);
         console.log("✅ Auth initialization completed");
-      }
-
-      // Handle location monitoring when user logs in (not during initial load if already logged in)
-      if (!wasLoggedIn && isNowLoggedIn) {
-        console.log("👤 User logged in, initializing location monitoring");
-        try {
-          // Add a small delay to ensure the auth state is fully established
-          setTimeout(async () => {
-            const initialized = await LocationMonitoringService.initialize();
-            if (initialized) {
-              console.log(
-                "📍 Location monitoring initialized, starting monitoring"
-              );
-              // Start monitoring immediately with the new approach
-              await LocationMonitoringService.startLocationMonitoring();
-            } else {
-              console.log("⚠️ Failed to initialize location monitoring");
-            }
-          }, 1000);
-        } catch (error) {
-          console.error(
-            "Error initializing location monitoring after login:",
-            error
-          );
-        }
-      }
-
-      // Handle case when user is already logged in on app start (restored from persistence)
-      if (isInitializing && isNowLoggedIn) {
-        console.log(
-          "🔄 User already logged in on app start, initializing location monitoring"
-        );
-        try {
-          // Add a delay to ensure all services are ready
-          setTimeout(async () => {
-            const initialized = await LocationMonitoringService.initialize();
-            if (initialized) {
-              console.log(
-                "📍 Location monitoring initialized on app start, starting monitoring"
-              );
-              // Start monitoring immediately with the new approach
-              await LocationMonitoringService.startLocationMonitoring();
-            } else {
-              console.log(
-                "⚠️ Failed to initialize location monitoring on app start"
-              );
-            }
-          }, 2000); // Longer delay for app start
-        } catch (error) {
-          console.error(
-            "Error initializing location monitoring on app start:",
-            error
-          );
-        }
-      }
-
-      // Handle location monitoring cleanup when user logs out (not during initial load)
-      if (wasLoggedIn && !isNowLoggedIn) {
-        console.log("👋 User logged out, cleaning up location monitoring");
-        LocationMonitoringService.handleUserLogout();
       }
     });
 

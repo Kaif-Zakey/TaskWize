@@ -52,6 +52,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-task-manager",
       [
         "expo-camera",
         {
@@ -79,9 +80,7 @@
         {
           "icon": "./assets/images/Icon.png",
           "color": "#ffffff",
-          "sounds": [
-            "./assets/sound/notification.wav"
-          ]
+          "sounds": ["./assets/sound/notification.wav"]
         }
       ],
       [
@@ -96,10 +95,7 @@
       [
         "expo-maps",
         {
-          "providers": [
-            "google",
-            "apple"
-          ]
+          "providers": ["google", "apple"]
         }
       ],
       "expo-font"
