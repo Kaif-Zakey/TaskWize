@@ -10,7 +10,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-      "firebase-auth-react-native.d.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
   ]
