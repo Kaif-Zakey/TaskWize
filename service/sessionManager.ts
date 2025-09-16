@@ -91,7 +91,7 @@ export class SessionManager {
       const autoLogin = await AsyncStorage.getItem(this.KEYS.AUTO_LOGIN);
       return isActive === "true" && autoLogin === "true";
     } catch (error) {
-      Alert.alert("Error checking session:", (error as Error).message);
+      Alert.alert("Error checking session:", (error as Error).message); 
       return false;
     }
   }
