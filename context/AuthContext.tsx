@@ -1,5 +1,6 @@
 import { auth } from "@/firebase";
 import LocationMonitoringService from "@/service/locationMonitoringService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import React, {
   createContext,
@@ -35,10 +36,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Clean up location monitoring before signing out
       LocationMonitoringService.handleUserLogout();
 
-      // Sign out from Firebase (this will automatically clear persistence)
+      // Clear AsyncStorage session data
+      await AsyncStorage.multiRemove(["userToken", "userId"]);
+      console.log("🗑️ Cleared user session from AsyncStorage");
+
+      // Sign out from Firebase
       await signOut(auth);
-    } catch {
-      // Silent error handling in production
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
+
+  // Check for stored session on app start
+  const checkStoredSession = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem("userToken");
+      const storedUserId = await AsyncStorage.getItem("userId");
+
+      if (storedToken && storedUserId && auth.currentUser) {
+        console.log("✅ Found stored session, user should remain logged in");
+        return true;
+      } else if (storedToken && storedUserId && !auth.currentUser) {
+        console.log(
+          "⚠️ Found stored session but no current user, clearing storage"
+        );
+        await AsyncStorage.multiRemove(["userToken", "userId"]);
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking stored session:", error);
+      return false;
     }
   };
 
@@ -62,6 +89,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
+    // Check for stored session first
+    const initializeAuth = async () => {
+      await checkStoredSession();
+    };
+
+    initializeAuth();
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!isMounted) return;
 
@@ -72,7 +106,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Debug: Check if this is a restored session
       if (currentUser && isInitializing) {
-        console.log("🔄 User session restored from persistence!");
+        console.log("🔄 User session restored from Firebase persistence!");
+
+        // Verify token is still valid
+        try {
+          await currentUser.getIdToken(true); // Force refresh
+          console.log("✅ User token is valid and refreshed");
+        } catch (error) {
+          console.error("❌ User token invalid, signing out:", error);
+          await signOut(auth);
+          return;
+        }
       }
 
       const previousUser = previousUserRef.current;
@@ -94,7 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Handle location monitoring cleanup when user logs out
       if (wasLoggedIn && !isNowLoggedIn) {
-        console.log("� User logged out, cleaning up location monitoring");
+        console.log("🚪 User logged out, cleaning up location monitoring");
         LocationMonitoringService.handleUserLogout();
       }
 
