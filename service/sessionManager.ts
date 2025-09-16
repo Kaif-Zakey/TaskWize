@@ -1,6 +1,7 @@
 import { auth } from "@/firebase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { Alert } from "react-native";
 
 export class SessionManager {
   private static readonly KEYS = {
@@ -90,6 +91,7 @@ export class SessionManager {
       const autoLogin = await AsyncStorage.getItem(this.KEYS.AUTO_LOGIN);
       return isActive === "true" && autoLogin === "true";
     } catch (error) {
+      Alert.alert("Error checking session:", (error as Error).message);
       return false;
     }
   }
