@@ -10,6 +10,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Alert } from "react-native";
 
 const AuthContext = createContext<{
   user: User | null;
@@ -95,7 +96,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (currentUser && isInitializing) {
         try {
           await currentUser.getIdToken(true); // Force refresh token
-        } catch (error) {
+        } catch (error: any) {
+          Alert.alert(error.message || "Session expired. Please log in again.");
           await signOut(auth);
           return;
         }

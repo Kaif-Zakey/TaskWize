@@ -1,6 +1,10 @@
+// firebase.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initializeApp } from "firebase/app";
-import { initializeAuth } from "firebase/auth";
+import {
+  getReactNativePersistence,
+  initializeAuth,
+} from "firebase/auth/react-native"; // works after declaration
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -14,24 +18,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with React Native persistence
-export const auth = initializeAuth(app);
-
-// Store auth state in AsyncStorage for additional persistence
-auth.onAuthStateChanged(async (user) => {
-  try {
-    if (user) {
-      // Store user session info
-      await AsyncStorage.setItem("userToken", await user.getIdToken());
-      await AsyncStorage.setItem("userId", user.uid);
-    } else {
-      // Clear stored session
-      await AsyncStorage.removeItem("userToken");
-      await AsyncStorage.removeItem("userId");
-    }
-  } catch (error) {
-    console.error("Error managing AsyncStorage session:", error);
-  }
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage),
 });
 
 export const db = getFirestore(app);
