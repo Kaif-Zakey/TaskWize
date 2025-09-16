@@ -1,4 +1,4 @@
- import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
 import { AppPreferences, usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
