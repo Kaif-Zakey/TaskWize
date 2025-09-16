@@ -320,34 +320,93 @@ App Version: 1.0.0
 
 This feedback was sent from TaskWize mobile app.`;
 
-      // Direct email URL to kaifzakey22@gmail.com
-      const emailUrl = `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
-        `TaskWize Feedback: ${subject}`
-      )}&body=${encodeURIComponent(emailBody)}`;
+      // Multiple email strategies for production build compatibility
+      const emailStrategies = [
+        // Strategy 1: Complete mailto with all parameters
+        `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
+          `TaskWize Feedback: ${subject}`
+        )}&body=${encodeURIComponent(emailBody)}`,
 
-      // Check if device can open email
-      const canOpenEmail = await Linking.canOpenURL(emailUrl);
+        // Strategy 2: Simple mailto with subject only
+        `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
+          `TaskWize Feedback: ${subject}`
+        )}`,
 
-      if (canOpenEmail) {
-        await Linking.openURL(emailUrl);
+        // Strategy 3: Basic mailto without parameters
+        "mailto:kaifzakey22@gmail.com",
 
+        // Strategy 4: Gmail web interface (fallback)
+        `https://mail.google.com/mail/?view=cm&to=kaifzakey22@gmail.com&su=${encodeURIComponent(
+          `TaskWize Feedback: ${subject}`
+        )}&body=${encodeURIComponent(emailBody)}`,
+      ];
+
+      let emailOpened = false;
+      let usedStrategy = "";
+
+      // Try each strategy until one works
+      for (let i = 0; i < emailStrategies.length; i++) {
+        const strategy = emailStrategies[i];
+
+        try {
+          // For production builds, be more aggressive about checking URL schemes
+          if (strategy.startsWith("mailto:")) {
+            // Check specifically for mailto support
+            const canOpenMailto = await Linking.canOpenURL(
+              "mailto:test@example.com"
+            );
+            if (canOpenMailto) {
+              await Linking.openURL(strategy);
+              emailOpened = true;
+              usedStrategy = "email app";
+              break;
+            }
+          } else if (strategy.startsWith("https://")) {
+            // Check for web browser support
+            const canOpenWeb = await Linking.canOpenURL("https://google.com");
+            if (canOpenWeb) {
+              await Linking.openURL(strategy);
+              emailOpened = true;
+              usedStrategy = "web email";
+              break;
+            }
+          }
+        } catch {
+          // Strategy failed, try next one
+          continue;
+        }
+      }
+
+      if (emailOpened) {
         // Close modal and reset form
         setShowFeedbackModal(false);
         setFeedbackSubject("");
         setFeedbackMessage("");
 
-        Alert.alert(
-          "Feedback Sent",
-          "Your feedback has been prepared in your email app. Please tap Send to submit it to kaifzakey22@gmail.com"
-        );
+        const message =
+          usedStrategy === "web email"
+            ? "Your web browser has been opened with Gmail. Please send the feedback email to kaifzakey22@gmail.com"
+            : "Your email app has been opened. Please send the feedback to kaifzakey22@gmail.com";
+
+        Alert.alert("Feedback Ready", message);
       } else {
-        throw new Error("Email app not available");
+        throw new Error("No email method available");
       }
     } catch {
+      // If all strategies fail, show manual instructions
       Alert.alert(
-        "Email Error",
-        "Unable to open email app. Please ensure you have an email app installed and configured on your device.",
-        [{ text: "OK" }]
+        "Email Setup Required",
+        `Unable to open email automatically. Please manually send your feedback to:\n\nkaifzakey22@gmail.com\n\nSubject: TaskWize Feedback\nMessage: ${feedbackMessage.trim()}`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowFeedbackModal(false);
+              setFeedbackSubject("");
+              setFeedbackMessage("");
+            },
+          },
+        ]
       );
     } finally {
       hideLoader();
