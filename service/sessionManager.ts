@@ -24,8 +24,8 @@ export class SessionManager {
         [this.KEYS.SESSION_ACTIVE, "true"],
         [this.KEYS.AUTO_LOGIN, "true"],
       ]);
-    } catch (error) {
-      console.error("Failed to save session:", error);
+    } catch {
+      // Failed to save session
     }
   }
 
@@ -61,7 +61,7 @@ export class SessionManager {
           const password = atob(passwordHash);
           await signInWithEmailAndPassword(auth, email, password);
           return true;
-        } catch (authError) {
+        } catch {
           // If authentication fails, clear invalid session
           await this.clearSession();
           return false;
@@ -69,8 +69,7 @@ export class SessionManager {
       }
 
       return !!auth.currentUser;
-    } catch (error) {
-      console.error("Error restoring session:", error);
+    } catch {
       return false;
     }
   }
@@ -79,8 +78,8 @@ export class SessionManager {
   static async clearSession(): Promise<void> {
     try {
       await AsyncStorage.multiRemove(Object.values(this.KEYS));
-    } catch (error) {
-      console.error("Error clearing session:", error);
+    } catch {
+      // Error clearing session
     }
   }
 
@@ -101,8 +100,8 @@ export class SessionManager {
       if (await this.hasActiveSession()) {
         await AsyncStorage.setItem(this.KEYS.LOGIN_TIME, Date.now().toString());
       }
-    } catch (error) {
-      console.error("Error refreshing session:", error);
+    } catch {
+      // Error refreshing session
     }
   }
 }

@@ -42,8 +42,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Sign out from Firebase
       await signOut(auth);
-    } catch (error) {
-      console.error("Error during logout:", error);
+    } catch {
+      // Error during logout
     }
   };
 

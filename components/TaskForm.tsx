@@ -6,11 +6,13 @@ import { MaterialIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   Alert,
+  Keyboard,
   Pressable,
   ScrollView,
   Switch,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
@@ -106,10 +108,43 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
   };
 
   const handleSave = () => {
+    // Enhanced validation
     if (!title.trim()) {
       Alert.alert("Error", "Please enter a task title.");
       return;
     }
+
+    if (title.trim().length < 3) {
+      Alert.alert("Error", "Task title must be at least 3 characters long.");
+      return;
+    }
+
+    if (title.trim().length > 100) {
+      Alert.alert("Error", "Task title must be less than 100 characters.");
+      return;
+    }
+
+    if (description.length > 500) {
+      Alert.alert(
+        "Error",
+        "Task description must be less than 500 characters."
+      );
+      return;
+    }
+
+    if (dueDate) {
+      const selectedDate = new Date(dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        Alert.alert("Error", "Due date cannot be in the past.");
+        return;
+      }
+    }
+
+    // Dismiss keyboard before saving
+    Keyboard.dismiss();
 
     const taskData: Omit<Task, "id"> = {
       title: title.trim(),
@@ -141,204 +176,246 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white p-4">
-      <Text className="text-2xl font-bold mb-6 text-gray-800">
-        {task ? "Edit Task" : "Create New Task"}
-      </Text>
-
-      {/* Title Input */}
-      <View className="mb-4">
-        <Text className="text-lg font-semibold mb-2 text-gray-700">
-          Title *
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <ScrollView className="flex-1 bg-white p-4">
+        <Text className="text-2xl font-bold mb-6 text-gray-800">
+          {task ? "Edit Task" : "Create New Task"}
         </Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Enter task title"
-          className="border border-gray-300 rounded-lg p-3 text-base"
-          multiline={false}
-        />
-      </View>
 
-      {/* Description Input */}
-      <View className="mb-4">
-        <Text className="text-lg font-semibold mb-2 text-gray-700">
-          Description
-        </Text>
-        <TextInput
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Enter task description"
-          className="border border-gray-300 rounded-lg p-3 text-base h-20"
-          multiline
-          textAlignVertical="top"
-        />
-      </View>
+        {/* Title Input */}
+        <View className="mb-4">
+          <Text className="text-lg font-semibold mb-2 text-gray-700">
+            Title *
+          </Text>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Enter task title"
+            className={`border rounded-lg p-3 text-base ${
+              title.trim() &&
+              title.trim().length >= 3 &&
+              title.trim().length <= 100
+                ? "border-green-500"
+                : title.trim() &&
+                  (title.trim().length < 3 || title.trim().length > 100)
+                ? "border-red-500"
+                : "border-gray-300"
+            }`}
+            multiline={false}
+            maxLength={100}
+            returnKeyType="next"
+            onSubmitEditing={() => Keyboard.dismiss()}
+          />
+          {title.trim() && title.trim().length < 3 && (
+            <Text className="text-red-500 text-sm mt-1">
+              Title must be at least 3 characters
+            </Text>
+          )}
+          {title.trim().length > 100 && (
+            <Text className="text-red-500 text-sm mt-1">
+              Title is too long (max 100 characters)
+            </Text>
+          )}
+          <Text className="text-gray-500 text-sm mt-1">
+            {title.length}/100 characters
+          </Text>
+        </View>
 
-      {/* Category Selection */}
-      <View className="mb-4">
-        <Text className="text-lg font-semibold mb-2 text-gray-700">
-          Category
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className="flex-row">
-            {categories.map((cat) => (
-              <Pressable
-                key={cat.value}
-                onPress={() => setCategory(cat.value)}
-                className={`flex-row items-center px-4 py-2 mr-2 rounded-full border ${
-                  category === cat.value
-                    ? "bg-blue-500 border-blue-500"
-                    : "bg-gray-100 border-gray-300"
-                }`}
-              >
-                <MaterialIcons
-                  name={cat.icon as any}
-                  size={18}
-                  color={category === cat.value ? "white" : "#6B7280"}
-                />
-                <Text
-                  className={`ml-1 ${
-                    category === cat.value ? "text-white" : "text-gray-600"
+        {/* Description Input */}
+        <View className="mb-4">
+          <Text className="text-lg font-semibold mb-2 text-gray-700">
+            Description
+          </Text>
+          <TextInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Enter task description"
+            className={`border rounded-lg p-3 text-base h-20 ${
+              description.length > 500 ? "border-red-500" : "border-gray-300"
+            }`}
+            multiline
+            textAlignVertical="top"
+            maxLength={500}
+            returnKeyType="done"
+            onSubmitEditing={() => Keyboard.dismiss()}
+          />
+          {description.length > 500 && (
+            <Text className="text-red-500 text-sm mt-1">
+              Description is too long (max 500 characters)
+            </Text>
+          )}
+          <Text className="text-gray-500 text-sm mt-1">
+            {description.length}/500 characters
+          </Text>
+        </View>
+
+        {/* Category Selection */}
+        <View className="mb-4">
+          <Text className="text-lg font-semibold mb-2 text-gray-700">
+            Category
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row">
+              {categories.map((cat) => (
+                <Pressable
+                  key={cat.value}
+                  onPress={() => setCategory(cat.value)}
+                  className={`flex-row items-center px-4 py-2 mr-2 rounded-full border ${
+                    category === cat.value
+                      ? "bg-blue-500 border-blue-500"
+                      : "bg-gray-100 border-gray-300"
                   }`}
                 >
-                  {cat.label}
+                  <MaterialIcons
+                    name={cat.icon as any}
+                    size={18}
+                    color={category === cat.value ? "white" : "#6B7280"}
+                  />
+                  <Text
+                    className={`ml-1 ${
+                      category === cat.value ? "text-white" : "text-gray-600"
+                    }`}
+                  >
+                    {cat.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Priority Selection */}
+        <View className="mb-4">
+          <Text className="text-lg font-semibold mb-2 text-gray-700">
+            Priority
+          </Text>
+          <View className="flex-row">
+            {priorities.map((pri) => (
+              <Pressable
+                key={pri.value}
+                onPress={() =>
+                  setPriority(pri.value as "low" | "medium" | "high")
+                }
+                className={`flex-1 py-3 mx-1 rounded-lg ${
+                  priority === pri.value ? pri.color : "bg-gray-200"
+                }`}
+              >
+                <Text
+                  className={`text-center font-medium ${
+                    priority === pri.value ? "text-white" : "text-gray-600"
+                  }`}
+                >
+                  {pri.label}
                 </Text>
               </Pressable>
             ))}
           </View>
-        </ScrollView>
-      </View>
-
-      {/* Priority Selection */}
-      <View className="mb-4">
-        <Text className="text-lg font-semibold mb-2 text-gray-700">
-          Priority
-        </Text>
-        <View className="flex-row">
-          {priorities.map((pri) => (
-            <Pressable
-              key={pri.value}
-              onPress={() =>
-                setPriority(pri.value as "low" | "medium" | "high")
-              }
-              className={`flex-1 py-3 mx-1 rounded-lg ${
-                priority === pri.value ? pri.color : "bg-gray-200"
-              }`}
-            >
-              <Text
-                className={`text-center font-medium ${
-                  priority === pri.value ? "text-white" : "text-gray-600"
-                }`}
-              >
-                {pri.label}
-              </Text>
-            </Pressable>
-          ))}
         </View>
-      </View>
 
-      {/* Due Date */}
-      <View className="mb-4">
-        <Text className="text-lg font-semibold mb-2 text-gray-700">
-          Due Date
-        </Text>
-        <TextInput
-          value={dueDate}
-          onChangeText={setDueDate}
-          placeholder="YYYY-MM-DD"
-          className="border border-gray-300 rounded-lg p-3 text-base"
-        />
-      </View>
-
-      {/* Location Section - Only show if location services are enabled */}
-      {isLocationServicesEnabled && (
+        {/* Due Date */}
         <View className="mb-4">
           <Text className="text-lg font-semibold mb-2 text-gray-700">
-            Location
+            Due Date
           </Text>
+          <TextInput
+            value={dueDate}
+            onChangeText={setDueDate}
+            placeholder="YYYY-MM-DD"
+            className="border border-gray-300 rounded-lg p-3 text-base"
+          />
+        </View>
 
-          <View className="flex-row mb-2">
-            <TextInput
-              value={locationInput}
-              onChangeText={setLocationInput}
-              placeholder="Enter address or location name"
-              className="flex-1 border border-gray-300 rounded-lg p-3 text-base mr-2"
-            />
+        {/* Location Section - Only show if location services are enabled */}
+        {isLocationServicesEnabled && (
+          <View className="mb-4">
+            <Text className="text-lg font-semibold mb-2 text-gray-700">
+              Location
+            </Text>
+
+            <View className="flex-row mb-2">
+              <TextInput
+                value={locationInput}
+                onChangeText={setLocationInput}
+                placeholder="Enter address or location name"
+                className="flex-1 border border-gray-300 rounded-lg p-3 text-base mr-2"
+              />
+              <Pressable
+                onPress={handleSearchLocation}
+                disabled={isLoadingLocation}
+                className="bg-blue-500 rounded-lg px-4 py-3 justify-center"
+              >
+                <MaterialIcons name="search" size={20} color="white" />
+              </Pressable>
+            </View>
+
             <Pressable
-              onPress={handleSearchLocation}
+              onPress={handleGetCurrentLocation}
               disabled={isLoadingLocation}
-              className="bg-blue-500 rounded-lg px-4 py-3 justify-center"
+              className="flex-row items-center justify-center bg-gray-100 rounded-lg p-3 mb-2"
             >
-              <MaterialIcons name="search" size={20} color="white" />
+              <MaterialIcons name="my-location" size={20} color="#6B7280" />
+              <Text className="ml-2 text-gray-600">
+                {isLoadingLocation
+                  ? "Getting location..."
+                  : "Use Current Location"}
+              </Text>
             </Pressable>
-          </View>
 
+            {location && (
+              <View className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
+                <View className="flex-row items-center">
+                  <MaterialIcons name="location-on" size={20} color="#10B981" />
+                  <Text className="ml-2 text-green-700 font-medium">
+                    Location Set
+                  </Text>
+                </View>
+                <Text className="text-sm text-green-600 mt-1">
+                  {location.address ||
+                    `${location.latitude.toFixed(
+                      6
+                    )}, ${location.longitude.toFixed(6)}`}
+                </Text>
+              </View>
+            )}
+
+            {location && (
+              <View className="flex-row items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <Text className="text-blue-700">
+                  Notify when near this location
+                </Text>
+                <Switch
+                  value={notifyOnLocation}
+                  onValueChange={setNotifyOnLocation}
+                  trackColor={{ false: "#D1D5DB", true: "#3B82F6" }}
+                  thumbColor={notifyOnLocation ? "#ffffff" : "#f4f3f4"}
+                />
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View className="flex-row space-x-3 mt-6">
           <Pressable
-            onPress={handleGetCurrentLocation}
-            disabled={isLoadingLocation}
-            className="flex-row items-center justify-center bg-gray-100 rounded-lg p-3 mb-2"
+            onPress={onCancel}
+            className="flex-1 bg-gray-200 rounded-lg py-4"
           >
-            <MaterialIcons name="my-location" size={20} color="#6B7280" />
-            <Text className="ml-2 text-gray-600">
-              {isLoadingLocation
-                ? "Getting location..."
-                : "Use Current Location"}
+            <Text className="text-center text-gray-700 font-semibold text-base">
+              Cancel
             </Text>
           </Pressable>
 
-          {location && (
-            <View className="bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
-              <View className="flex-row items-center">
-                <MaterialIcons name="location-on" size={20} color="#10B981" />
-                <Text className="ml-2 text-green-700 font-medium">
-                  Location Set
-                </Text>
-              </View>
-              <Text className="text-sm text-green-600 mt-1">
-                {location.address ||
-                  `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`}
-              </Text>
-            </View>
-          )}
-
-          {location && (
-            <View className="flex-row items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <Text className="text-blue-700">
-                Notify when near this location
-              </Text>
-              <Switch
-                value={notifyOnLocation}
-                onValueChange={setNotifyOnLocation}
-                trackColor={{ false: "#D1D5DB", true: "#3B82F6" }}
-                thumbColor={notifyOnLocation ? "#ffffff" : "#f4f3f4"}
-              />
-            </View>
-          )}
+          <Pressable
+            onPress={handleSave}
+            className="flex-1 bg-blue-500 rounded-lg py-4"
+          >
+            <Text className="text-center text-white font-semibold text-base">
+              {task ? "Update Task" : "Create Task"}
+            </Text>
+          </Pressable>
         </View>
-      )}
-
-      {/* Action Buttons */}
-      <View className="flex-row space-x-3 mt-6">
-        <Pressable
-          onPress={onCancel}
-          className="flex-1 bg-gray-200 rounded-lg py-4"
-        >
-          <Text className="text-center text-gray-700 font-semibold text-base">
-            Cancel
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleSave}
-          className="flex-1 bg-blue-500 rounded-lg py-4"
-        >
-          <Text className="text-center text-white font-semibold text-base">
-            {task ? "Update Task" : "Create Task"}
-          </Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </TouchableWithoutFeedback>
   );
 };
 

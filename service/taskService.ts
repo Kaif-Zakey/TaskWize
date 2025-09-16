@@ -37,8 +37,7 @@ export const getDefaultTaskCategory = async (): Promise<string> => {
       return categoryMap[defaultCategory] || "work";
     }
     return "work"; // Default fallback
-  } catch (error) {
-    console.error("Error loading default task category:", error);
+  } catch {
     return "work"; // Default fallback
   }
 };
@@ -64,8 +63,6 @@ export const createTask = async (task: Task) => {
   // Normalize location data structure
   let normalizedLocation = null;
   if (task.location) {
-    console.log("📍 Creating task with location data:", task.location);
-
     // Handle potential coords structure from LocationPicker
     const taskLocationAny = task.location as any;
     if (taskLocationAny.coords) {
@@ -77,7 +74,6 @@ export const createTask = async (task: Task) => {
         address: task.location.address || "",
         name: task.location.name || "",
       };
-      console.log("📍 Normalized from coords structure:", normalizedLocation);
     } else if (task.location.latitude && task.location.longitude) {
       // Handle location data already in correct format
       normalizedLocation = {
@@ -87,9 +83,6 @@ export const createTask = async (task: Task) => {
         address: task.location.address || "",
         name: task.location.name || "",
       };
-      console.log("📍 Used direct structure:", normalizedLocation);
-    } else {
-      console.log("⚠️ Location data provided but no valid coordinates found");
     }
   }
 
@@ -103,12 +96,6 @@ export const createTask = async (task: Task) => {
     updatedAt: new Date().toISOString(),
     status: task.status || "pending",
   };
-
-  console.log("📝 Final task data before saving:", {
-    title: taskWithTimestamps.title,
-    location: taskWithTimestamps.location,
-    notifyOnLocation: taskWithTimestamps.notifyOnLocation,
-  });
 
   // Remove undefined values to prevent Firebase errors
   const cleanedTask = Object.fromEntries(
@@ -264,7 +251,7 @@ export const getTasksWithLocation = async (userId: string) => {
         ({
           id: taskRef.id,
           ...taskRef.data(),
-        }) as Task
+        } as Task)
     )
     .filter((task) => task.location);
 };
@@ -291,14 +278,11 @@ export const getTaskStatistics = async (userId: string) => {
       (task) => task.priority === "high" && task.status === "pending"
     ).length,
     withLocation: tasks.filter((task) => task.location).length,
-    byCategory: tasks.reduce(
-      (acc, task) => {
-        const category = task.category || "Other";
-        acc[category] = (acc[category] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    ),
+    byCategory: tasks.reduce((acc, task) => {
+      const category = task.category || "Other";
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
     completionRate:
       tasks.length > 0
         ? Math.round(

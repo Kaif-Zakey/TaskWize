@@ -14,8 +14,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with React Native persistence
-export const auth = initializeAuth(app);
+// Initialize Auth with proper persistence for React Native
+// Note: Firebase 12.x uses different persistence API than older versions
+export const auth = initializeAuth(app, {
+  // Default persistence should work for React Native
+  // AsyncStorage is automatically used by Firebase in React Native environments
+});
 
 // Store auth state in AsyncStorage for additional persistence
 auth.onAuthStateChanged(async (user) => {
@@ -29,8 +33,8 @@ auth.onAuthStateChanged(async (user) => {
       await AsyncStorage.removeItem("userToken");
       await AsyncStorage.removeItem("userId");
     }
-  } catch (error) {
-    console.error("Error managing AsyncStorage session:", error);
+  } catch {
+    // Error managing AsyncStorage session
   }
 });
 

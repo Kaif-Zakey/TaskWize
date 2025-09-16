@@ -17,6 +17,7 @@ import React, { useState } from "react";
 import {
   Alert,
   Animated,
+  Keyboard,
   Linking,
   Modal,
   ScrollView,
@@ -24,6 +25,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
@@ -88,9 +90,6 @@ const SettingsScreen = () => {
       try {
         if (value === false) {
           // Disable notifications - cancel all scheduled notifications
-          console.log(
-            "🔕 Disabling push notifications - cancelling all scheduled notifications"
-          );
           await NotificationService.cancelAllNotifications();
           Alert.alert(
             "Notifications Disabled",
@@ -98,9 +97,6 @@ const SettingsScreen = () => {
           );
         } else {
           // Enable notifications - request permissions if needed
-          console.log(
-            "🔔 Enabling push notifications - requesting permissions"
-          );
           const hasPermission = await NotificationService.requestPermissions();
           if (!hasPermission) {
             Alert.alert(
@@ -115,8 +111,7 @@ const SettingsScreen = () => {
             "Push notifications are now enabled. You'll receive task reminders and alerts."
           );
         }
-      } catch (error) {
-        console.error("Error updating notification settings:", error);
+      } catch {
         Alert.alert(
           "Error",
           "Failed to update notification settings. Please try again."
@@ -135,8 +130,8 @@ const SettingsScreen = () => {
       try {
         // Play a preview sound directly without notification
         await NotificationService.playDirectSound();
-      } catch (error) {
-        console.error("Error playing preview sound:", error);
+      } catch {
+        // Sound playback failed
       }
     }
 
@@ -147,30 +142,24 @@ const SettingsScreen = () => {
   const reauthenticateUser = async (password: string): Promise<boolean> => {
     try {
       if (!user?.email) {
-        console.error("No user email found");
         return false;
       }
 
       if (!auth.currentUser) {
-        console.error("No current user found");
         return false;
       }
 
-      console.log("Attempting reauthentication for:", user.email);
       const credential = EmailAuthProvider.credential(user.email, password);
       await reauthenticateWithCredential(auth.currentUser, credential);
-      console.log("Reauthentication successful");
       return true;
     } catch (error: any) {
-      console.error("Reauthentication failed:", error);
-
       // Handle specific reauthentication errors
       if (error.code === "auth/wrong-password") {
-        console.error("Wrong password provided");
+        // Wrong password provided
       } else if (error.code === "auth/too-many-requests") {
-        console.error("Too many failed attempts");
+        // Too many failed attempts
       } else if (error.code === "auth/user-disabled") {
-        console.error("User account disabled");
+        // User account disabled
       }
 
       return false;
@@ -217,49 +206,29 @@ const SettingsScreen = () => {
   };
 
   const handleLogout = () => {
-    console.log("🔥 LOGOUT BUTTON CLICKED");
-    console.log("🔥 Current user:", user);
-    console.log("🔥 Logout function exists:", typeof logout);
-
     // Show custom confirmation modal instead of Alert.alert
     setShowLogoutConfirm(true);
   };
 
   const performLogout = async () => {
     try {
-      console.log("🔐 Starting logout process...");
-      console.log("🔐 User before logout:", user);
-
       // Hide the confirmation modal
       setShowLogoutConfirm(false);
       showLoader();
 
       // Call the logout function from AuthContext
-      console.log("🔐 Calling logout from AuthContext...");
-      console.log("🔐 Logout function type:", typeof logout);
-
       await logout();
-      console.log("🔐 Logout function completed");
-
-      console.log("🔐 Logout successful, clearing local data...");
 
       // Clear any local storage data
       try {
         await AsyncStorage.multiRemove(["appPreferences", "userProfile"]);
-        console.log("🔐 Local storage cleared");
-      } catch (storageError) {
-        console.error("Storage clear error:", storageError);
+      } catch {
         // Don't fail logout if storage clear fails
       }
 
-      console.log("🔐 Navigating to login screen...");
       // Navigate to login screen
       router.replace("/(auth)/login");
-
-      console.log("✅ Logout process completed successfully");
-    } catch (error) {
-      console.error("❌ Logout error:", error);
-      console.error("❌ Error details:", (error as Error).message);
+    } catch {
       Alert.alert("Error", "Failed to logout. Please try again.");
     } finally {
       hideLoader();
@@ -281,30 +250,21 @@ const SettingsScreen = () => {
 
               // First, delete all user tasks from Firebase
               if (user?.uid) {
-                console.log("🗑️ Deleting all user tasks from Firebase...");
                 const userTasks = await getAllTaskByUserId(user.uid);
-                console.log(`Found ${userTasks.length} tasks to delete`);
 
                 // Delete each task
                 for (const task of userTasks) {
                   if (task.id) {
                     try {
                       await deleteTask(task.id, user.uid);
-                      console.log(`✅ Deleted task: ${task.title}`);
-                    } catch (error) {
-                      console.error(
-                        `❌ Failed to delete task ${task.id}:`,
-                        error
-                      );
+                    } catch {
+                      // Failed to delete task, continue with others
                     }
                   }
                 }
-
-                console.log("🗑️ All tasks deleted from Firebase");
               }
 
               // Clear local storage
-              console.log("🧹 Clearing local storage...");
               await AsyncStorage.clear();
 
               hideLoader();
@@ -314,9 +274,8 @@ const SettingsScreen = () => {
               );
 
               // The preferences context will automatically reload
-            } catch (error) {
+            } catch {
               hideLoader();
-              console.error("Error clearing app data:", error);
               Alert.alert(
                 "Error",
                 "Failed to clear all app data. Please try again."
@@ -334,60 +293,111 @@ const SettingsScreen = () => {
       return;
     }
 
+    // Dismiss keyboard before proceeding
+    Keyboard.dismiss();
+
     try {
       showLoader();
 
-      // Prepare email data
-      const emailData = {
-        to: "kaifzakey22@gmail.com",
-        subject: feedbackSubject.trim() || "TaskWize App Feedback",
-        message: `
-Feedback from TaskWize User
-==========================
+      // Simplified email data to avoid URL length issues
+      const subject = feedbackSubject.trim() || "TaskWize App Feedback";
+      const message = `Feedback from TaskWize User:
 
-User Email: ${user?.email || "Not provided"}
-User ID: ${user?.uid || "Not provided"}
-Date: ${new Date().toISOString()}
+${feedbackMessage.trim()}
+
+User: ${user?.email || "Not provided"}
+Date: ${new Date().toLocaleDateString()}`;
+
+      // Create shorter email URL
+      const emailUrl = `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
+        subject
+      )}&body=${encodeURIComponent(message)}`;
+
+      // Check if the URL is too long (some devices have limits)
+      if (emailUrl.length > 2000) {
+        // Fallback: simpler message
+        const simpleMessage = `TaskWize Feedback: ${feedbackMessage.trim()}`;
+        const simpleEmailUrl = `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
+          subject
+        )}&body=${encodeURIComponent(simpleMessage)}`;
+
+        const canOpenSimple = await Linking.canOpenURL(simpleEmailUrl);
+        if (canOpenSimple) {
+          await Linking.openURL(simpleEmailUrl);
+        } else {
+          throw new Error("Cannot open email app");
+        }
+      } else {
+        const canOpen = await Linking.canOpenURL(emailUrl);
+        if (canOpen) {
+          await Linking.openURL(emailUrl);
+        } else {
+          throw new Error("Cannot open email app");
+        }
+      }
+
+      // Close modal and reset form
+      setShowFeedbackModal(false);
+      setFeedbackSubject("");
+      setFeedbackMessage("");
+
+      Alert.alert(
+        "Thank You!",
+        "Your email app has been opened with your feedback. Please send the email to complete the submission."
+      );
+    } catch {
+      // Show alternative options
+      Alert.alert(
+        "Email App Error",
+        "Unable to open email app. Would you like to copy the feedback to clipboard instead?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Copy to Clipboard",
+            onPress: () => copyFeedbackToClipboard(),
+          },
+        ]
+      );
+    } finally {
+      hideLoader();
+    }
+  };
+
+  const copyFeedbackToClipboard = async () => {
+    try {
+      const feedbackText = `TaskWize App Feedback
 
 Subject: ${feedbackSubject.trim() || "General Feedback"}
 
 Message:
 ${feedbackMessage.trim()}
 
---
-Sent from TaskWize Mobile App
-        `.trim(),
-      };
+User: ${user?.email || "Not provided"}
+Date: ${new Date().toLocaleDateString()}
 
-      // Use React Native Linking to open email app
-      const emailUrl = `mailto:${emailData.to}?subject=${encodeURIComponent(
-        emailData.subject
-      )}&body=${encodeURIComponent(emailData.message)}`;
+Please send this feedback to: kaifzakey22@gmail.com`;
 
-      const canOpen = await Linking.canOpenURL(emailUrl);
-      if (canOpen) {
-        await Linking.openURL(emailUrl);
-
-        // Close modal and reset form
-        setShowFeedbackModal(false);
-        setFeedbackSubject("");
-        setFeedbackMessage("");
-
-        Alert.alert(
-          "Thank You!",
-          "Your default email app has been opened with your feedback. Please send the email to complete the submission."
-        );
-      } else {
-        throw new Error("No email app available");
-      }
-    } catch (error) {
-      console.error("Error submitting feedback:", error);
+      // Copy to clipboard (you'll need to install @react-native-clipboard/clipboard)
+      // For now, just show the text to copy manually
       Alert.alert(
-        "Error",
-        "Failed to open email app. You can manually send feedback to kaifzakey22@gmail.com"
+        "Feedback Copied",
+        `Please manually send this feedback to kaifzakey22@gmail.com:\n\n${feedbackText}`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setShowFeedbackModal(false);
+              setFeedbackSubject("");
+              setFeedbackMessage("");
+            },
+          },
+        ]
       );
-    } finally {
-      hideLoader();
+    } catch {
+      Alert.alert("Error", "Failed to prepare feedback. Please try again.");
     }
   };
 
@@ -931,172 +941,196 @@ Sent from TaskWize Mobile App
         animationType="slide"
         onRequestClose={() => setShowFeedbackModal(false)}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 24,
-          }}
-        >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View
             style={{
-              backgroundColor: colors.surface,
-              borderRadius: 16,
+              flex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              justifyContent: "center",
+              alignItems: "center",
               padding: 24,
-              width: "100%",
-              maxWidth: 450,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8,
             }}
           >
-            {/* Header */}
-            <View style={{ alignItems: "center", marginBottom: 24 }}>
-              <MaterialIcons
-                name="feedback"
-                size={32}
-                color={colors.primary}
-                style={{ marginBottom: 8 }}
-              />
-              <Text
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View
                 style={{
-                  fontSize: 22,
-                  fontWeight: "bold",
-                  color: colors.text,
-                  marginBottom: 4,
+                  backgroundColor: colors.surface,
+                  borderRadius: 16,
+                  padding: 24,
+                  width: "100%",
+                  maxWidth: 450,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
                 }}
               >
-                Send Feedback
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                  textAlign: "center",
-                  lineHeight: 20,
-                }}
-              >
-                Help us improve TaskWize with your suggestions
-              </Text>
-            </View>
+                {/* Header */}
+                <View style={{ alignItems: "center", marginBottom: 24 }}>
+                  <MaterialIcons
+                    name="feedback"
+                    size={32}
+                    color={colors.primary}
+                    style={{ marginBottom: 8 }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: "bold",
+                      color: colors.text,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Send Feedback
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: colors.textSecondary,
+                      textAlign: "center",
+                      lineHeight: 20,
+                    }}
+                  >
+                    Help us improve TaskWize with your suggestions
+                  </Text>
+                </View>
 
-            {/* Subject Input */}
-            <View style={{ marginBottom: 20 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: colors.text,
-                  marginBottom: 8,
-                }}
-              >
-                Subject (optional)
-              </Text>
-              <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  backgroundColor: colors.background,
-                  color: colors.text,
-                }}
-                value={feedbackSubject}
-                onChangeText={setFeedbackSubject}
-                placeholder="e.g., Bug Report, Feature Request"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
+                {/* Subject Input */}
+                <View style={{ marginBottom: 20 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: colors.text,
+                      marginBottom: 8,
+                    }}
+                  >
+                    Subject (optional)
+                  </Text>
+                  <TextInput
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 14,
+                      fontSize: 16,
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                    }}
+                    value={feedbackSubject}
+                    onChangeText={setFeedbackSubject}
+                    placeholder="e.g., Bug Report, Feature Request"
+                    placeholderTextColor={colors.textSecondary}
+                    returnKeyType="next"
+                    onSubmitEditing={() => {
+                      // Focus on the message input when subject is done
+                    }}
+                  />
+                </View>
 
-            {/* Message Input */}
-            <View style={{ marginBottom: 24 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: colors.text,
-                  marginBottom: 8,
-                }}
-              >
-                Your Feedback <Text style={{ color: colors.primary }}>*</Text>
-              </Text>
-              <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  backgroundColor: colors.background,
-                  color: colors.text,
-                  height: 120,
-                  textAlignVertical: "top",
-                }}
-                value={feedbackMessage}
-                onChangeText={setFeedbackMessage}
-                placeholder="Tell us what you think about TaskWize. What features would you like to see? Any bugs or issues?"
-                placeholderTextColor={colors.textSecondary}
-                multiline
-              />
-            </View>
+                {/* Message Input */}
+                <View style={{ marginBottom: 24 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: colors.text,
+                      marginBottom: 8,
+                    }}
+                  >
+                    Your Feedback{" "}
+                    <Text style={{ color: colors.primary }}>*</Text>
+                  </Text>
+                  <TextInput
+                    style={{
+                      borderWidth: 1,
+                      borderColor: feedbackMessage.trim()
+                        ? colors.primary
+                        : colors.border,
+                      borderRadius: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 14,
+                      fontSize: 16,
+                      backgroundColor: colors.background,
+                      color: colors.text,
+                      height: 120,
+                      textAlignVertical: "top",
+                    }}
+                    value={feedbackMessage}
+                    onChangeText={setFeedbackMessage}
+                    placeholder="Tell us what you think about TaskWize. What features would you like to see? Any bugs or issues?"
+                    placeholderTextColor={colors.textSecondary}
+                    multiline
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      if (feedbackMessage.trim()) {
+                        Keyboard.dismiss();
+                      }
+                    }}
+                  />
+                </View>
 
-            {/* Action Buttons */}
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: 14,
-                  backgroundColor: colors.border,
-                  borderRadius: 12,
-                  alignItems: "center",
-                }}
-                onPress={() => {
-                  setShowFeedbackModal(false);
-                  setFeedbackSubject("");
-                  setFeedbackMessage("");
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.text,
-                    fontSize: 16,
-                    fontWeight: "600",
-                  }}
-                >
-                  Cancel
-                </Text>
-              </TouchableOpacity>
+                {/* Action Buttons */}
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      paddingVertical: 14,
+                      backgroundColor: colors.border,
+                      borderRadius: 12,
+                      alignItems: "center",
+                    }}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setShowFeedbackModal(false);
+                      setFeedbackSubject("");
+                      setFeedbackMessage("");
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: colors.text,
+                        fontSize: 16,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: 14,
-                  backgroundColor: colors.primary,
-                  borderRadius: 12,
-                  alignItems: "center",
-                }}
-                onPress={submitFeedback}
-              >
-                <Text
-                  style={{
-                    color: "white",
-                    fontSize: 16,
-                    fontWeight: "600",
-                  }}
-                >
-                  Send Feedback
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      paddingVertical: 14,
+                      backgroundColor: feedbackMessage.trim()
+                        ? colors.primary
+                        : colors.border,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      opacity: feedbackMessage.trim() ? 1 : 0.6,
+                    }}
+                    onPress={submitFeedback}
+                    disabled={!feedbackMessage.trim()}
+                  >
+                    <Text
+                      style={{
+                        color: feedbackMessage.trim()
+                          ? "white"
+                          : colors.textSecondary,
+                        fontSize: 16,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Send Feedback
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
