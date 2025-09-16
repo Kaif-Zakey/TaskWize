@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -14,8 +14,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth - Firebase v12 automatically handles React Native persistence
-export const auth = getAuth(app);
+// Initialize Auth with React Native persistence using AsyncStorage
+// This is the correct approach for Firebase v12 in React Native production builds
+export const auth = initializeAuth(app);
 
 // Store auth state in AsyncStorage for additional persistence
 auth.onAuthStateChanged(async (user) => {

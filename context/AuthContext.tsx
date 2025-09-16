@@ -47,51 +47,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Check for stored session on app start
-  const checkStoredSession = async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem("userToken");
-      const storedUserId = await AsyncStorage.getItem("userId");
-
-      if (storedToken && storedUserId && auth.currentUser) {
-        console.log("✅ Found stored session, user should remain logged in");
-        return true;
-      } else if (storedToken && storedUserId && !auth.currentUser) {
-        console.log(
-          "⚠️ Found stored session but no current user, clearing storage"
-        );
-        await AsyncStorage.multiRemove(["userToken", "userId"]);
-      }
-      return false;
-    } catch (error) {
-      console.error("Error checking stored session:", error);
-      return false;
-    }
-  };
-
-  const initializeLocationMonitoring = async () => {
-    if (!user) return;
-
-    console.log("👤 User authenticated, setting up location monitoring");
-    try {
-      const initialized = await LocationMonitoringService.initialize();
-      if (initialized) {
-        console.log("📍 Location monitoring initialized, starting monitoring");
-        await LocationMonitoringService.startLocationMonitoring();
-      } else {
-        console.log("⚠️ Failed to initialize location monitoring");
-      }
-    } catch (error) {
-      console.error("Error setting up location monitoring:", error);
-    }
-  };
-
   useEffect(() => {
     let isMounted = true;
 
+    // Enhanced session restoration for production builds
+    const restoreSessionFromStorage = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem("userToken");
+        const storedUserId = await AsyncStorage.getItem("userId");
+        const lastLoginTime = await AsyncStorage.getItem("lastLoginTime");
+
+        console.log("🔍 Checking stored session...", {
+          hasToken: !!storedToken,
+          hasUserId: !!storedUserId,
+          hasLoginTime: !!lastLoginTime,
+          currentUser: !!auth.currentUser,
+        });
+
+        if (storedToken && storedUserId) {
+          // Check if we have Firebase auth but no user state
+          if (auth.currentUser && !user) {
+            console.log("🔄 Firebase user exists, restoring to state");
+            setUser(auth.currentUser);
+            setLoading(false);
+            return true;
+          }
+
+          // If we have stored session but no Firebase auth, try to restore
+          if (!auth.currentUser) {
+            console.log(
+              "⚠️ Stored session found but no Firebase auth, waiting for restoration..."
+            );
+            // Give Firebase time to restore the session
+            setTimeout(async () => {
+              if (auth.currentUser) {
+                console.log("✅ Firebase session restored!");
+                setUser(auth.currentUser);
+              } else {
+                console.log(
+                  "❌ Firebase session restoration failed, clearing storage"
+                );
+                await AsyncStorage.multiRemove([
+                  "userToken",
+                  "userId",
+                  "lastLoginTime",
+                ]);
+              }
+              setLoading(false);
+            }, 2000); // Wait 2 seconds for Firebase to restore
+            return false;
+          }
+        }
+
+        return false;
+      } catch (error) {
+        console.error("Error restoring session:", error);
+        return false;
+      }
+    };
+
     // Check for stored session first
     const initializeAuth = async () => {
-      await checkStoredSession();
+      await restoreSessionFromStorage();
     };
 
     initializeAuth();
@@ -153,7 +170,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false;
       unsubscribe();
     };
-  }, [isInitializing]);
+  }, [isInitializing, user]);
+
+  const initializeLocationMonitoring = async () => {
+    if (!user) return;
+
+    console.log("👤 User authenticated, setting up location monitoring");
+    try {
+      const initialized = await LocationMonitoringService.initialize();
+      if (initialized) {
+        console.log("📍 Location monitoring initialized, starting monitoring");
+        await LocationMonitoringService.startLocationMonitoring();
+      } else {
+        console.log("⚠️ Failed to initialize location monitoring");
+      }
+    } catch (error) {
+      console.error("Error setting up location monitoring:", error);
+    }
+  };
 
   return (
     <AuthContext.Provider
