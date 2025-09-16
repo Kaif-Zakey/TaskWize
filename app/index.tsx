@@ -9,11 +9,10 @@ const Index = () => {
 
   useEffect(() => {
     if (!loading && !isInitializing) {
-      if (user) {
-        router.replace("/(dashboard)/home");
-      } else {
-        router.replace("/(auth)/login");
-      }
+      setTimeout(() => {
+    if (user) router.replace("/(dashboard)/home");
+    else router.replace("/(auth)/login");
+  }, 100);
     }
   }, [user, loading, isInitializing, router]);
 

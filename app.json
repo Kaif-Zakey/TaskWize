@@ -14,7 +14,12 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "This app needs location access to track tasks and send proximity notifications.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to track tasks and send proximity notifications even when the app is in the background."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to track tasks and send proximity notifications even when the app is in the background.",
+        "UIBackgroundModes": [
+          "location",
+          "background-processing",
+          "background-fetch"
+        ]
       },
       "config": {
         "googleMapsApiKey": "AIzaSyBhfVxN_UTEN4qh0if5Az_dbvyeB632NkA"
@@ -35,6 +40,13 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -82,9 +94,7 @@
         {
           "icon": "./assets/images/Icon.png",
           "color": "#ffffff",
-          "sounds": [
-            "./assets/sound/notification.wav"
-          ]
+          "sounds": ["./assets/sound/notification.wav"]
         }
       ],
       [
@@ -99,10 +109,7 @@
       [
         "expo-maps",
         {
-          "providers": [
-            "google",
-            "apple"
-          ]
+          "providers": ["google", "apple"]
         }
       ],
       "expo-font"

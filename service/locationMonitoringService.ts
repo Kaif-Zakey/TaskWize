@@ -6,7 +6,7 @@ import { NotificationService } from "./notificationService";
 
 const LOCATION_TASK_NAME = "TASKWIZE_LOCATION_TRACKING";
 
-// Define the background task at module level
+// Define the background location task at module level
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
   try {
     console.log("🔄 Background location task triggered");
@@ -41,6 +41,21 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
     }
   } catch (taskError) {
     console.error("❌ Error in background location task:", taskError);
+
+    // Send a notification about the error for debugging
+    try {
+      const errorMessage =
+        taskError instanceof Error ? taskError.message : String(taskError);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Location Task Error",
+          body: `Error: ${errorMessage}`,
+        },
+        trigger: null,
+      });
+    } catch (notifError) {
+      console.error("Failed to send error notification:", notifError);
+    }
   }
 });
 
@@ -140,15 +155,19 @@ class LocationMonitoringService {
       // Start background location updates using TaskManager
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.Balanced,
-        timeInterval: 30000, // Check every 30 seconds
-        distanceInterval: 50, // Check when user moves 50+ meters
+        timeInterval: 15000, // Check every 15 seconds for better responsiveness
+        distanceInterval: 25, // Check when user moves 25+ meters
+        deferredUpdatesInterval: 30000, // iOS deferred updates
         showsBackgroundLocationIndicator: true, // iOS only
         foregroundService: {
-          notificationTitle: "TaskWize Location Tracking",
-          notificationBody:
-            "Tracking your location to notify you about nearby tasks",
+          notificationTitle: "TaskWize Active",
+          notificationBody: "Location tracking for task notifications",
           notificationColor: "#4285F4",
+          killServiceOnDestroy: false, // Keep service running
         },
+        // Additional options for better background performance
+        pausesUpdatesAutomatically: false, // iOS - don't pause automatically
+        activityType: Location.ActivityType.Other, // iOS - general activity type
       });
 
       this.isMonitoring = true;
@@ -368,7 +387,9 @@ class LocationMonitoringService {
 
       if (!taskLat || !taskLng) {
         console.log(
-          `⚠️ ${isBackground ? "[BG]" : "[FG]"} Task "${task.title}" has invalid location coordinates`
+          `⚠️ ${isBackground ? "[BG]" : "[FG]"} Task "${
+            task.title
+          }" has invalid location coordinates`
         );
         return;
       }
@@ -383,7 +404,9 @@ class LocationMonitoringService {
       if (distance <= taskRange) {
         if (!this.lastNotifiedTasks.has(task.id)) {
           console.log(
-            `🔔 Sending location alert for "${task.title}" (${Math.round(distance)}m away)`
+            `🔔 Sending location alert for "${task.title}" (${Math.round(
+              distance
+            )}m away)`
           );
           await this.sendLocationNotification(task, distance, isBackground);
           this.lastNotifiedTasks.add(task.id);
@@ -391,7 +414,9 @@ class LocationMonitoringService {
         }
       } else {
         console.log(
-          `📍 ${isBackground ? "[BG]" : "[FG]"} Task "${task.title}" is outside range (${Math.round(distance)}m > ${taskRange}m)`
+          `📍 ${isBackground ? "[BG]" : "[FG]"} Task "${
+            task.title
+          }" is outside range (${Math.round(distance)}m > ${taskRange}m)`
         );
       }
     } catch (error) {
