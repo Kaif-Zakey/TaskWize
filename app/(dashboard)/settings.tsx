@@ -1,4 +1,4 @@
-import { useAuth } from "@/context/AuthContext";
+ import { useAuth } from "@/context/AuthContext";
 import { useLoader } from "@/context/LoaderContext";
 import { AppPreferences, usePreferences } from "@/context/PreferencesContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -7,6 +7,7 @@ import { NotificationService } from "@/service/notificationService";
 import { deleteTask, getAllTaskByUserId } from "@/service/taskService";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Clipboard from "@react-native-clipboard/clipboard";
 import { useRouter } from "expo-router";
 import {
   EmailAuthProvider,
@@ -299,65 +300,83 @@ const SettingsScreen = () => {
     try {
       showLoader();
 
-      // Simplified email data to avoid URL length issues
+      // Create email data with multiple fallback strategies
       const subject = feedbackSubject.trim() || "TaskWize App Feedback";
-      const message = `Feedback from TaskWize User:
+      const userEmail = user?.email || "Not provided";
+      const currentDate = new Date().toLocaleDateString();
 
-${feedbackMessage.trim()}
+      // Try multiple email approaches for better compatibility
+      const approaches = [
+        // Approach 1: Simple email with minimal content
+        {
+          name: "Simple",
+          url: `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
+            subject
+          )}`,
+        },
+        // Approach 2: Email with body content
+        {
+          name: "WithBody",
+          url: `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
+            subject
+          )}&body=${encodeURIComponent(
+            `Feedback: ${feedbackMessage.trim()}\n\nFrom: ${userEmail}\nDate: ${currentDate}`
+          )}`,
+        },
+        // Approach 3: Just the email address
+        {
+          name: "AddressOnly",
+          url: "mailto:kaifzakey22@gmail.com",
+        },
+      ];
 
-User: ${user?.email || "Not provided"}
-Date: ${new Date().toLocaleDateString()}`;
+      let emailOpened = false;
 
-      // Create shorter email URL
-      const emailUrl = `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
-        subject
-      )}&body=${encodeURIComponent(message)}`;
-
-      // Check if the URL is too long (some devices have limits)
-      if (emailUrl.length > 2000) {
-        // Fallback: simpler message
-        const simpleMessage = `TaskWize Feedback: ${feedbackMessage.trim()}`;
-        const simpleEmailUrl = `mailto:kaifzakey22@gmail.com?subject=${encodeURIComponent(
-          subject
-        )}&body=${encodeURIComponent(simpleMessage)}`;
-
-        const canOpenSimple = await Linking.canOpenURL(simpleEmailUrl);
-        if (canOpenSimple) {
-          await Linking.openURL(simpleEmailUrl);
-        } else {
-          throw new Error("Cannot open email app");
-        }
-      } else {
-        const canOpen = await Linking.canOpenURL(emailUrl);
-        if (canOpen) {
-          await Linking.openURL(emailUrl);
-        } else {
-          throw new Error("Cannot open email app");
+      // Try each approach until one works
+      for (const approach of approaches) {
+        try {
+          const canOpen = await Linking.canOpenURL(approach.url);
+          if (canOpen) {
+            await Linking.openURL(approach.url);
+            emailOpened = true;
+            break;
+          }
+        } catch {
+          // Try next approach
+          continue;
         }
       }
 
-      // Close modal and reset form
-      setShowFeedbackModal(false);
-      setFeedbackSubject("");
-      setFeedbackMessage("");
+      if (emailOpened) {
+        // Close modal and reset form
+        setShowFeedbackModal(false);
+        setFeedbackSubject("");
+        setFeedbackMessage("");
 
-      Alert.alert(
-        "Thank You!",
-        "Your email app has been opened with your feedback. Please send the email to complete the submission."
-      );
+        Alert.alert(
+          "Email App Opened",
+          "Your email app has been opened. Please complete your feedback and send the email to kaifzakey22@gmail.com"
+        );
+      } else {
+        throw new Error("Cannot open email app");
+      }
     } catch {
-      // Show alternative options
+      // Show alternative options with multiple choices
       Alert.alert(
-        "Email App Error",
-        "Unable to open email app. Would you like to copy the feedback to clipboard instead?",
+        "Email App Not Available",
+        "Unable to open email app. Choose an alternative:",
         [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
           {
             text: "Copy to Clipboard",
             onPress: () => copyFeedbackToClipboard(),
+          },
+          {
+            text: "Show Feedback Text",
+            onPress: () => showFeedbackText(),
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
           },
         ]
       );
@@ -380,11 +399,12 @@ Date: ${new Date().toLocaleDateString()}
 
 Please send this feedback to: kaifzakey22@gmail.com`;
 
-      // Copy to clipboard (you'll need to install @react-native-clipboard/clipboard)
-      // For now, just show the text to copy manually
+      // Copy to clipboard using the installed package
+      await Clipboard.setString(feedbackText);
+
       Alert.alert(
-        "Feedback Copied",
-        `Please manually send this feedback to kaifzakey22@gmail.com:\n\n${feedbackText}`,
+        "Copied to Clipboard",
+        "Your feedback has been copied to clipboard. You can now paste it in any email app or messaging platform to send to kaifzakey22@gmail.com",
         [
           {
             text: "OK",
@@ -397,8 +417,33 @@ Please send this feedback to: kaifzakey22@gmail.com`;
         ]
       );
     } catch {
-      Alert.alert("Error", "Failed to prepare feedback. Please try again.");
+      // Fallback if clipboard fails
+      showFeedbackText();
     }
+  };
+
+  const showFeedbackText = () => {
+    const feedbackText = `TaskWize App Feedback
+
+Subject: ${feedbackSubject.trim() || "General Feedback"}
+
+Message: ${feedbackMessage.trim()}
+
+User: ${user?.email || "Not provided"}
+Date: ${new Date().toLocaleDateString()}
+
+Send to: kaifzakey22@gmail.com`;
+
+    Alert.alert("Your Feedback", feedbackText, [
+      {
+        text: "Close",
+        onPress: () => {
+          setShowFeedbackModal(false);
+          setFeedbackSubject("");
+          setFeedbackMessage("");
+        },
+      },
+    ]);
   };
 
   const SettingItem = ({
@@ -1070,6 +1115,21 @@ Please send this feedback to: kaifzakey22@gmail.com`;
                       }
                     }}
                   />
+                </View>
+
+                {/* Help Text */}
+                <View style={{ marginBottom: 24 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: colors.textSecondary,
+                      textAlign: "center",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    We&apos;ll try to open your email app, or provide copy
+                    options if not available
+                  </Text>
                 </View>
 
                 {/* Action Buttons */}

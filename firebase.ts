@@ -14,27 +14,40 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with proper persistence for React Native
-// Note: Firebase 12.x uses different persistence API than older versions
-export const auth = initializeAuth(app, {
-  // Default persistence should work for React Native
-  // AsyncStorage is automatically used by Firebase in React Native environments
-});
+// Initialize Auth with React Native persistence
+// Firebase v12+ automatically uses AsyncStorage in React Native environments
+export const auth = initializeAuth(app);
 
-// Store auth state in AsyncStorage for additional persistence
+// Enhanced session persistence with AsyncStorage
 auth.onAuthStateChanged(async (user) => {
   try {
     if (user) {
-      // Store user session info
-      await AsyncStorage.setItem("userToken", await user.getIdToken());
+      // Store essential user data for session persistence
+      await AsyncStorage.setItem(
+        "firebaseUser",
+        JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          timestamp: Date.now(),
+        })
+      );
+      // Get and store fresh token for compatibility
+      const token = await user.getIdToken();
+      await AsyncStorage.setItem("firebaseToken", token);
+      await AsyncStorage.setItem("userToken", token);
       await AsyncStorage.setItem("userId", user.uid);
     } else {
-      // Clear stored session
-      await AsyncStorage.removeItem("userToken");
-      await AsyncStorage.removeItem("userId");
+      // Clear all session data when user logs out
+      await AsyncStorage.multiRemove([
+        "firebaseUser",
+        "firebaseToken",
+        "userToken",
+        "userId",
+      ]);
     }
   } catch {
-    // Error managing AsyncStorage session
+    // Silent error handling for AsyncStorage operations
   }
 });
 

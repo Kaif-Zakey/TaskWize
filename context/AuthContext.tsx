@@ -10,7 +10,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Alert } from "react-native";
 
 const AuthContext = createContext<{
   user: User | null;
@@ -50,77 +49,84 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
-    // Session restoration using SessionManager
+    // Improved session restoration
     const restoreSessionFromStorage = async () => {
       try {
-        // Try to restore session using SessionManager
-        const sessionRestored = await SessionManager.restoreSession();
-
-        if (sessionRestored && auth.currentUser && !user) {
+        // Check if Firebase already has the user authenticated
+        if (auth.currentUser) {
           setUser(auth.currentUser);
           setLoading(false);
           return true;
         }
 
-        // If no session or restoration failed, check Firebase auth state
-        if (!auth.currentUser) {
-          // Give Firebase time to restore session automatically
-          setTimeout(() => {
-            if (auth.currentUser) {
-              setUser(auth.currentUser);
-            }
-            setLoading(false);
-          }, 1500);
-          return false;
+        // Try to restore session using SessionManager as backup
+        const sessionRestored = await SessionManager.restoreSession();
+
+        if (sessionRestored && auth.currentUser) {
+          setUser(auth.currentUser);
+          setLoading(false);
+          return true;
         }
 
-        return !!auth.currentUser;
-      } catch (error) {
-        console.error("Error restoring session:", error);
+        // No session to restore
+        setLoading(false);
+        return false;
+      } catch {
         setLoading(false);
         return false;
       }
     };
 
-    // Check for stored session first
+    // Initialize authentication state
     const initializeAuth = async () => {
+      // First try to restore from storage
       await restoreSessionFromStorage();
     };
 
     initializeAuth();
 
+    // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!isMounted) return;
 
-      // Check if this is a restored session and verify token
-      if (currentUser && isInitializing) {
-        try {
-          await currentUser.getIdToken(true); // Force refresh token
-        } catch (error: any) {
-          Alert.alert(error.message || "Session expired. Please log in again.");
-          await signOut(auth);
-          return;
+      try {
+        // Verify token if user is authenticated and this is initial load
+        if (currentUser && isInitializing) {
+          try {
+            await currentUser.getIdToken(true); // Force refresh to verify token
+          } catch {
+            // Token is invalid, sign out
+            await signOut(auth);
+            return;
+          }
         }
-      }
 
-      const previousUser = previousUserRef.current;
-      const wasLoggedIn = previousUser !== null;
-      const isNowLoggedIn = currentUser !== null;
+        const previousUser = previousUserRef.current;
+        const wasLoggedIn = previousUser !== null;
+        const isNowLoggedIn = currentUser !== null;
 
-      // Update the ref before setting state
-      previousUserRef.current = currentUser;
+        // Update the ref before setting state
+        previousUserRef.current = currentUser;
 
-      setUser(currentUser ?? null);
-      setLoading(false);
+        setUser(currentUser ?? null);
+        setLoading(false);
 
-      // Handle location monitoring cleanup when user logs out
-      if (wasLoggedIn && !isNowLoggedIn) {
-        LocationMonitoringService.handleUserLogout();
-      }
+        // Handle location monitoring cleanup when user logs out
+        if (wasLoggedIn && !isNowLoggedIn) {
+          LocationMonitoringService.handleUserLogout();
+        }
 
-      // Mark initialization as complete
-      if (isInitializing) {
-        setIsInitializing(false);
+        // Mark initialization as complete
+        if (isInitializing) {
+          setIsInitializing(false);
+        }
+      } catch {
+        // Error in auth state change handler
+        setUser(null);
+        setLoading(false);
+        if (isInitializing) {
+          setIsInitializing(false);
+        }
       }
     });
 
@@ -128,22 +134,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false;
       unsubscribe();
     };
-  }, [isInitializing, user]);
+  }, [isInitializing]);
 
   const initializeLocationMonitoring = async () => {
     if (!user) return;
 
-    console.log("👤 User authenticated, setting up location monitoring");
     try {
       const initialized = await LocationMonitoringService.initialize();
       if (initialized) {
-        console.log("📍 Location monitoring initialized, starting monitoring");
         await LocationMonitoringService.startLocationMonitoring();
-      } else {
-        console.log("⚠️ Failed to initialize location monitoring");
       }
-    } catch (error) {
-      console.error("Error setting up location monitoring:", error);
+    } catch {
+      // Error setting up location monitoring
     }
   };
 
