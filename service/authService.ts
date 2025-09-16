@@ -8,6 +8,7 @@ import {
   signOut,
   User,
 } from "firebase/auth";
+import { SessionManager } from "./sessionManager";
 
 export const register = (email: string, password: string) => {
   return createUserWithEmailAndPassword(auth, email, password);
@@ -17,10 +18,12 @@ export const login = async (email: string, password: string) => {
   try {
     const result = await signInWithEmailAndPassword(auth, email, password);
 
-    // Store additional session data for persistence
+    // Save session data for permanent persistence
+    await SessionManager.saveSession(email, password);
+
+    // Store additional data in AsyncStorage
     await AsyncStorage.setItem("lastLoginTime", Date.now().toString());
     await AsyncStorage.setItem("userEmail", email);
-    console.log("✅ Login successful, session data stored");
 
     return result;
   } catch (error) {
@@ -31,14 +34,16 @@ export const login = async (email: string, password: string) => {
 
 export const logout = async () => {
   try {
-    // Clear all session data
+    // Clear all session data including SessionManager data
+    await SessionManager.clearSession();
+
+    // Clear additional AsyncStorage data
     await AsyncStorage.multiRemove([
       "userToken",
       "userId",
       "lastLoginTime",
       "userEmail",
     ]);
-    console.log("🗑️ All session data cleared");
 
     return await signOut(auth);
   } catch (error) {
@@ -56,7 +61,6 @@ export const validateSession = async (): Promise<boolean> => {
   try {
     const user = auth.currentUser;
     if (!user) {
-      console.log("❌ No current user found");
       return false;
     }
 
@@ -64,16 +68,16 @@ export const validateSession = async (): Promise<boolean> => {
     const token = await user.getIdToken(true); // Force refresh
 
     if (token) {
-      console.log("✅ User session is valid");
-      // Update stored token
+      // Update stored token and refresh session
       await AsyncStorage.setItem("userToken", token);
+      await SessionManager.refreshSession();
       return true;
     }
 
     return false;
   } catch (error) {
-    console.error("❌ Session validation failed:", error);
     // Clear invalid session data
+    await SessionManager.clearSession();
     await AsyncStorage.multiRemove([
       "userToken",
       "userId",
@@ -93,7 +97,7 @@ export const setupSessionRefresh = () => {
         const token = await user.getIdToken(true);
         await AsyncStorage.setItem("userToken", token);
         await AsyncStorage.setItem("userId", user.uid);
-        console.log("🔄 Session refreshed automatically");
+        await SessionManager.refreshSession();
       } catch (error) {
         console.error("Failed to refresh session:", error);
       }

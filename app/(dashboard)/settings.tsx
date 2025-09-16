@@ -360,7 +360,9 @@ Sent from TaskWize Mobile App
       };
 
       // Use React Native Linking to open email app
-      const emailUrl = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.message)}`;
+      const emailUrl = `mailto:${emailData.to}?subject=${encodeURIComponent(
+        emailData.subject
+      )}&body=${encodeURIComponent(emailData.message)}`;
 
       const canOpen = await Linking.canOpenURL(emailUrl);
       if (canOpen) {
@@ -545,16 +547,6 @@ Sent from TaskWize Mobile App
           >
             App Preferences
           </Text>
-
-          <SwitchItem
-            icon="notifications"
-            title="Push Notifications"
-            subtitle="Receive task reminders and updates"
-            value={preferences.notifications}
-            onValueChange={(value) =>
-              updatePreferenceWithSpecialHandling("notifications", value)
-            }
-          />
 
           <SwitchItem
             icon="location-on"
@@ -945,111 +937,125 @@ Sent from TaskWize Mobile App
             backgroundColor: "rgba(0, 0, 0, 0.5)",
             justifyContent: "center",
             alignItems: "center",
-            padding: 20,
+            padding: 24,
           }}
         >
           <View
             style={{
               backgroundColor: colors.surface,
-              borderRadius: 12,
+              borderRadius: 16,
               padding: 24,
               width: "100%",
-              maxWidth: 500,
-              maxHeight: "80%",
+              maxWidth: 450,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
             }}
           >
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "bold",
-                color: colors.text,
-                marginBottom: 8,
-                textAlign: "center",
-              }}
-            >
-              Send Feedback
-            </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginBottom: 20,
-                textAlign: "center",
-              }}
-            >
-              Help us improve TaskWize with your suggestions and feedback
-            </Text>
+            {/* Header */}
+            <View style={{ alignItems: "center", marginBottom: 24 }}>
+              <MaterialIcons
+                name="feedback"
+                size={32}
+                color={colors.primary}
+                style={{ marginBottom: 8 }}
+              />
+              <Text
+                style={{
+                  fontSize: 22,
+                  fontWeight: "bold",
+                  color: colors.text,
+                  marginBottom: 4,
+                }}
+              >
+                Send Feedback
+              </Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: colors.textSecondary,
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                Help us improve TaskWize with your suggestions
+              </Text>
+            </View>
 
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "500",
-                color: colors.text,
-                marginBottom: 8,
-              }}
-            >
-              Subject (optional)
-            </Text>
-            <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: 8,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                fontSize: 16,
-                backgroundColor: colors.background,
-                color: colors.text,
-                marginBottom: 16,
-              }}
-              value={feedbackSubject}
-              onChangeText={setFeedbackSubject}
-              placeholder="e.g., Bug Report, Feature Request, General Feedback"
-              placeholderTextColor={colors.textSecondary}
-            />
+            {/* Subject Input */}
+            <View style={{ marginBottom: 20 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "600",
+                  color: colors.text,
+                  marginBottom: 8,
+                }}
+              >
+                Subject (optional)
+              </Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                }}
+                value={feedbackSubject}
+                onChangeText={setFeedbackSubject}
+                placeholder="e.g., Bug Report, Feature Request"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
 
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "500",
-                color: colors.text,
-                marginBottom: 8,
-              }}
-            >
-              Your Feedback *
-            </Text>
-            <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: 8,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                fontSize: 16,
-                backgroundColor: colors.background,
-                color: colors.text,
-                height: 120,
-                textAlignVertical: "top",
-                marginBottom: 20,
-              }}
-              value={feedbackMessage}
-              onChangeText={setFeedbackMessage}
-              placeholder="Tell us what you think about TaskWize. What features would you like to see? Any bugs or issues? We'd love to hear from you!"
-              placeholderTextColor={colors.textSecondary}
-              multiline
-            />
+            {/* Message Input */}
+            <View style={{ marginBottom: 24 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "600",
+                  color: colors.text,
+                  marginBottom: 8,
+                }}
+              >
+                Your Feedback <Text style={{ color: colors.primary }}>*</Text>
+              </Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  height: 120,
+                  textAlignVertical: "top",
+                }}
+                value={feedbackMessage}
+                onChangeText={setFeedbackMessage}
+                placeholder="Tell us what you think about TaskWize. What features would you like to see? Any bugs or issues?"
+                placeholderTextColor={colors.textSecondary}
+                multiline
+              />
+            </View>
 
-            <View
-              style={{ flexDirection: "row", justifyContent: "space-between" }}
-            >
+            {/* Action Buttons */}
+            <View style={{ flexDirection: "row", gap: 12 }}>
               <TouchableOpacity
                 style={{
                   flex: 1,
-                  paddingVertical: 12,
-                  paddingHorizontal: 20,
+                  paddingVertical: 14,
                   backgroundColor: colors.border,
-                  borderRadius: 8,
-                  marginRight: 10,
+                  borderRadius: 12,
+                  alignItems: "center",
                 }}
                 onPress={() => {
                   setShowFeedbackModal(false);
@@ -1062,20 +1068,19 @@ Sent from TaskWize Mobile App
                     color: colors.text,
                     fontSize: 16,
                     fontWeight: "600",
-                    textAlign: "center",
                   }}
                 >
                   Cancel
                 </Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={{
                   flex: 1,
-                  paddingVertical: 12,
-                  paddingHorizontal: 20,
+                  paddingVertical: 14,
                   backgroundColor: colors.primary,
-                  borderRadius: 8,
-                  marginLeft: 10,
+                  borderRadius: 12,
+                  alignItems: "center",
                 }}
                 onPress={submitFeedback}
               >
@@ -1084,7 +1089,6 @@ Sent from TaskWize Mobile App
                     color: "white",
                     fontSize: 16,
                     fontWeight: "600",
-                    textAlign: "center",
                   }}
                 >
                   Send Feedback
