@@ -1,3 +1,4 @@
+import { useLoader } from "@/context/LoaderContext";
 import Task from "@/src/types/task";
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
@@ -44,23 +45,41 @@ const TaskCard: React.FC<TaskCardProps> = ({
     }
   };
 
+  const { showLoader, hideLoader } = useLoader();
+
   const handleDelete = () => {
     Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => onDelete?.(task.id!),
+        onPress: async () => {
+          try {
+            showLoader();
+            await onDelete?.(task.id!);
+          } finally {
+            hideLoader();
+          }
+        },
       },
     ]);
+  };
+
+  const handleToggleStatus = async () => {
+    try {
+      showLoader();
+      await onToggleStatus?.(task.id!);
+    } finally {
+      hideLoader();
+    }
   };
 
   return (
     <Pressable
       onPress={onPress}
-      className={`p-4 m-2 rounded-xl border-l-4 ${getPriorityColor(task.priority)} ${
-        task.status === "completed" ? "opacity-60" : ""
-      }`}
+      className={`p-4 m-2 rounded-xl border-l-4 ${getPriorityColor(
+        task.priority
+      )} ${task.status === "completed" ? "opacity-60" : ""}`}
       style={{
         backgroundColor: "white",
         shadowColor: "#000",
@@ -134,10 +153,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
         {/* Action Buttons */}
         <View className="flex-row items-center ml-2">
           {/* Status Toggle */}
-          <Pressable
-            onPress={() => onToggleStatus?.(task.id!)}
-            className="p-2 mr-2"
-          >
+          <Pressable onPress={handleToggleStatus} className="p-2 mr-2">
             <MaterialIcons
               name={
                 task.status === "completed"
@@ -164,8 +180,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
               task.priority === "high"
                 ? "bg-red-500"
                 : task.priority === "medium"
-                  ? "bg-yellow-500"
-                  : "bg-green-500"
+                ? "bg-yellow-500"
+                : "bg-green-500"
             }`}
           >
             <Text className="text-xs text-white font-medium">

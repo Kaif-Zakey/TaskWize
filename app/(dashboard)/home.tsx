@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
+import { useLoader } from "@/context/LoaderContext";
 import { useTheme } from "@/context/ThemeContext";
 import { tasksRef } from "@/service/taskService";
 import Task from "@/src/types/task";
@@ -14,12 +15,14 @@ const Home = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [user, setUser] = useState<any>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [
     hasInitializedLocationMonitoring,
     setHasInitializedLocationMonitoring,
   ] = useState(false);
   const router = useRouter();
   const { user: authUser, initializeLocationMonitoring } = useAuth();
+  const { showLoader, hideLoader } = useLoader();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -62,30 +65,33 @@ const Home = () => {
   useEffect(() => {
     if (!authUser?.uid) {
       setTasks([]);
+      setIsLoadingTasks(false);
       return;
     }
 
+    setIsLoadingTasks(true);
     const unsubscribe = onSnapshot(
       tasksRef,
       (snapshot) => {
         const allTasks = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() }) as Task)
+          .map((d) => ({ id: d.id, ...d.data() } as Task))
           .filter((task) => task.userId === authUser?.uid);
 
         setTasks(allTasks);
+        setIsLoadingTasks(false);
 
         // Initialize location monitoring after tasks are loaded (only once)
         if (allTasks.length >= 0 && !hasInitializedLocationMonitoring) {
           setHasInitializedLocationMonitoring(true);
           setTimeout(() => {
-            initializeLocationMonitoring().catch((error: any) => {
-              console.error("Error initializing location monitoring:", error);
+            initializeLocationMonitoring().catch(() => {
+              // Error initializing location monitoring
             });
-          }, 1000); // Small delay to ensure tasks are fully processed
+          }, 1000);
         }
       },
-      (err) => {
-        console.error("Error listening to tasks:", err);
+      () => {
+        setIsLoadingTasks(false);
       }
     );
 
@@ -108,14 +114,11 @@ const Home = () => {
   const tasksWithLocation = tasks.filter((task) => task.location).length;
 
   // Get tasks by category
-  const tasksByCategory = tasks.reduce(
-    (acc, task) => {
-      const category = task.category || "Other";
-      acc[category] = (acc[category] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+  const tasksByCategory = tasks.reduce((acc, task) => {
+    const category = task.category || "Other";
+    acc[category] = (acc[category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   // Get recent pending tasks (last 5)
   const recentPendingTasks = tasks
@@ -289,12 +292,12 @@ const Home = () => {
                       totalTasks === 0
                         ? colors.border
                         : completionRate >= 75
-                          ? colors.success || "#10B981"
-                          : completionRate >= 50
-                            ? colors.warning || "#F59E0B"
-                            : completionRate >= 25
-                              ? "#F97316" // orange
-                              : colors.error || "#EF4444",
+                        ? colors.success || "#10B981"
+                        : completionRate >= 50
+                        ? colors.warning || "#F59E0B"
+                        : completionRate >= 25
+                        ? "#F97316" // orange
+                        : colors.error || "#EF4444",
                     height: 8,
                     borderRadius: 4,
                     width: totalTasks === 0 ? "0%" : `${completionRate}%`,
@@ -318,8 +321,8 @@ const Home = () => {
                   completionRate >= 75
                     ? colors.success || "#10B981"
                     : completionRate >= 50
-                      ? colors.warning || "#F59E0B"
-                      : colors.textSecondary,
+                    ? colors.warning || "#F59E0B"
+                    : colors.textSecondary,
                 fontSize: 11,
                 marginTop: 4,
                 fontStyle: "italic",
@@ -328,12 +331,12 @@ const Home = () => {
               {completionRate >= 90
                 ? "🎉 Excellent progress!"
                 : completionRate >= 75
-                  ? "💪 Great job!"
-                  : completionRate >= 50
-                    ? "👍 Good progress!"
-                    : completionRate >= 25
-                      ? "🎯 Keep going!"
-                      : "🚀 Just getting started!"}
+                ? "💪 Great job!"
+                : completionRate >= 50
+                ? "👍 Good progress!"
+                : completionRate >= 25
+                ? "🎯 Keep going!"
+                : "🚀 Just getting started!"}
             </Text>
           )}
         </View>
@@ -881,8 +884,8 @@ const Home = () => {
                             task.priority === "high"
                               ? colors.error + "20"
                               : task.priority === "medium"
-                                ? colors.warning + "20"
-                                : colors.success + "20",
+                              ? colors.warning + "20"
+                              : colors.success + "20",
                         }}
                       >
                         <Text
@@ -893,8 +896,8 @@ const Home = () => {
                               task.priority === "high"
                                 ? colors.error
                                 : task.priority === "medium"
-                                  ? colors.warning
-                                  : colors.success,
+                                ? colors.warning
+                                : colors.success,
                           }}
                         >
                           {task.priority}
@@ -1006,10 +1009,10 @@ const Home = () => {
             {completionRate >= 80
               ? "You're doing amazing! Consider setting more challenging goals to keep growing."
               : completionRate >= 60
-                ? "Great progress! Try breaking larger tasks into smaller, manageable steps."
-                : completionRate >= 40
-                  ? "Keep going! Set specific times for task completion to build momentum."
-                  : "Start small! Focus on completing just one task at a time to build confidence."}
+              ? "Great progress! Try breaking larger tasks into smaller, manageable steps."
+              : completionRate >= 40
+              ? "Keep going! Set specific times for task completion to build momentum."
+              : "Start small! Focus on completing just one task at a time to build confidence."}
           </Text>
         </View>
       </View>

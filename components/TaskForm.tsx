@@ -1,3 +1,4 @@
+import { useLoader } from "@/context/LoaderContext";
 import { usePreferences } from "@/context/PreferencesContext";
 import locationService from "@/service/locationService";
 import Location from "@/src/types/location";
@@ -39,6 +40,7 @@ const priorities = [
 
 const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
   const { isLocationServicesEnabled } = usePreferences();
+  const { showLoader, hideLoader } = useLoader();
   const [title, setTitle] = useState(task?.title || "");
   const [description, setDescription] = useState(task?.description || "");
   const [category, setCategory] = useState(task?.category || "");
@@ -107,7 +109,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
     setIsLoadingLocation(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Enhanced validation
     if (!title.trim()) {
       Alert.alert("Error", "Please enter a task title.");
@@ -146,33 +148,29 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onSave, onCancel }) => {
     // Dismiss keyboard before saving
     Keyboard.dismiss();
 
-    const taskData: Omit<Task, "id"> = {
-      title: title.trim(),
-      description: description.trim(),
-      priority,
-      status: task?.status || "pending",
-    };
+    try {
+      showLoader();
 
-    // Only add optional fields if they have values
-    if (category) {
-      taskData.category = category;
+      const taskData: Omit<Task, "id"> = {
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        priority,
+        dueDate: dueDate || undefined,
+        location: isLocationServicesEnabled && location ? location : undefined,
+        notifyOnLocation:
+          isLocationServicesEnabled && notifyOnLocation && !!location,
+        status: task?.status || "pending",
+        createdAt: task?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await onSave(taskData);
+    } catch {
+      Alert.alert("Error", "Failed to save task. Please try again.");
+    } finally {
+      hideLoader();
     }
-
-    if (dueDate) {
-      taskData.dueDate = dueDate;
-    }
-
-    // Only include location data if location services are enabled
-    if (isLocationServicesEnabled && location) {
-      taskData.location = location;
-      taskData.notifyOnLocation = notifyOnLocation;
-    } else {
-      // Clear location data if location services are disabled
-      taskData.location = undefined;
-      taskData.notifyOnLocation = false;
-    }
-
-    onSave(taskData);
   };
 
   return (
