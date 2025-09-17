@@ -18,9 +18,10 @@
 
 <div align="center">
 
-[![TaskWize Demo Video](https://img.youtube.com/vi/mQT03gbeuAY/maxresdefault.jpg)](https://youtu.be/mQT03gbeuAY?si=lGr-ol-mkmEOQLon)
+[![TaskWize Demo Video](https://img.youtube.com/vi/mQT03gbeuAY/maxresdefault.jpg)](https://www.youtube.com/watch?v=mQT03gbeuAY)
 
-**📺 [Watch the Full Demo on YouTube](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)**
+**📺 [Watch the Full Demo on YouTube](https://www.youtube.com/watch?v=mQT03gbeuAY)**
+
 
 _See TaskWize in action! This demo showcases location-based task management, proximity notifications, and all key features._
 
