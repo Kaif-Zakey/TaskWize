@@ -18,7 +18,9 @@
 
 <div align="center">
 
-[![TaskWize Demo Video](https://img.youtube.com/vi/mQT03gbeuAY/0.jpg)](https://www.youtube.com/watch?v=mQT03gbeuAY)
+<a href="https://www.youtube.com/watch?v=mQT03gbeuAY">
+  <img src="https://github.com/Kaif-Zakey/TaskWize/blob/main/assets/images/Icon.png" width="200" />
+</a>
 
 **📺 [Watch the Full Demo on YouTube](https://www.youtube.com/watch?v=mQT03gbeuAY)**
 
