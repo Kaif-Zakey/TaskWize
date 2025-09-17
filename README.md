@@ -18,7 +18,7 @@
 
 <div align="center">
 
-[![TaskWize Demo Video](https://img.youtube.com/vi/YOUR_VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+[![TaskWize Demo Video](https://img.youtube.com/vi/mQT03gbeuAY/maxresdefault.jpg)](https://youtu.be/mQT03gbeuAY?si=lGr-ol-mkmEOQLon)
 
 **📺 [Watch the Full Demo on YouTube](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)**
 
