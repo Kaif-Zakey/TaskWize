@@ -1164,3 +1164,4 @@ This feedback was sent from TaskWize mobile app.`;
 };
 
 export default SettingsScreen;
+  

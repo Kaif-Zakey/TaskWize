@@ -1,6 +1,5 @@
 import { auth } from "@/firebase";
 import LocationMonitoringService from "@/service/locationMonitoringService";
-import { SessionManager } from "@/service/sessionManager";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import React, {
   createContext,
@@ -33,13 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      // Clean up location monitoring before signing out
       LocationMonitoringService.handleUserLogout();
-
-      // Clear all session data using SessionManager
-      await SessionManager.clearSession();
-
-      // Sign out from Firebase
       await signOut(auth);
     } catch {
       // Error during logout
@@ -49,43 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
-    // Improved session restoration
-    const restoreSessionFromStorage = async () => {
-      try {
-        // Check if Firebase already has the user authenticated
-        if (auth.currentUser) {
-          setUser(auth.currentUser);
-          setLoading(false);
-          return true;
-        }
-
-        // Try to restore session using SessionManager as backup
-        const sessionRestored = await SessionManager.restoreSession();
-
-        if (sessionRestored && auth.currentUser) {
-          setUser(auth.currentUser);
-          setLoading(false);
-          return true;
-        }
-
-        // No session to restore
-        setLoading(false);
-        return false;
-      } catch {
-        setLoading(false);
-        return false;
-      }
-    };
-
-    // Initialize authentication state
-    const initializeAuth = async () => {
-      // First try to restore from storage
-      await restoreSessionFromStorage();
-    };
-
-    initializeAuth();
-
-    // Listen for auth state changes
+    // Listen for auth state changes - Firebase handles persistence automatically
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!isMounted) return;
 
@@ -93,9 +50,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Verify token if user is authenticated and this is initial load
         if (currentUser && isInitializing) {
           try {
-            await currentUser.getIdToken(true); // Force refresh to verify token
+            await currentUser.getIdToken(true);
           } catch {
-            // Token is invalid, sign out
             await signOut(auth);
             return;
           }
@@ -105,23 +61,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const wasLoggedIn = previousUser !== null;
         const isNowLoggedIn = currentUser !== null;
 
-        // Update the ref before setting state
         previousUserRef.current = currentUser;
-
         setUser(currentUser ?? null);
         setLoading(false);
 
-        // Handle location monitoring cleanup when user logs out
         if (wasLoggedIn && !isNowLoggedIn) {
           LocationMonitoringService.handleUserLogout();
         }
 
-        // Mark initialization as complete
         if (isInitializing) {
           setIsInitializing(false);
         }
       } catch {
-        // Error in auth state change handler
         setUser(null);
         setLoading(false);
         if (isInitializing) {

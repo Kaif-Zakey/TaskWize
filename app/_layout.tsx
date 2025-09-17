@@ -2,7 +2,6 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LoaderProvider } from "@/context/LoaderContext";
 import { PreferencesProvider } from "@/context/PreferencesContext";
 import { ThemeProvider } from "@/context/ThemeContext";
-import { setupSessionRefresh } from "@/service/authService";
 import { NotificationService } from "@/service/notificationService";
 import * as Notifications from "expo-notifications";
 import { Slot } from "expo-router";
@@ -55,13 +54,8 @@ const RootLayout = () => {
     const notificationCleanup =
       NotificationService.setupNotificationListeners();
 
-    // Setup automatic session refresh
-    const sessionCleanup = setupSessionRefresh();
-    console.log("✅ Session refresh mechanism initialized");
-
     return () => {
       notificationCleanup();
-      sessionCleanup();
     };
   }, []);
 
